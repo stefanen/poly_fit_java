@@ -1,6 +1,3 @@
-import java.awt.*;
-import java.util.ArrayList;
-
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math3.util.Pair;
 import org.jfree.chart.ChartPanel;
@@ -13,20 +10,25 @@ import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
 import javax.swing.*;
+import java.awt.*;
+import java.util.ArrayList;
 
 public class PolyFitter {
 
     public static final int DEGREE_TO_FIT = 3;
 
     public static void main(String[] args) {
-        simpleDemo1();
+        //simpleDemo1(1);
+        simpleDemo1(2);
+        simpleDemo1(3);
+        simpleDemo1(4);
     }
 
 
-    private static void simpleDemo1() {
-        double[] p1_x = {1.02,2.2,3.123};
+    private static void simpleDemo1(int demoCase) {
+        double[] p1_x = {1.02, 2.2, 3.123};
         double[] p1_y = {1.4, 5.765, 7.0};
-        double[] p2_x = {3.123, 11.0,12.2,12.0,13.123,13.2,14.123};
+        double[] p2_x = {3.123, 11.0, 12.2, 12.0, 13.123, 13.2, 14.123};
         double[] p2_y = {7.0, 11.4, 15.765, 11.4, 17.0, 15.765, 17.0};
 
 
@@ -39,23 +41,37 @@ public class PolyFitter {
         PolynomialFunction p2Polynomial = PolyFitterUtil.fitSamplesDefault(p2_x, p2_y, DEGREE_TO_FIT);
         */
 
-        boolean doSmoothFit = true;
-
-        if (doSmoothFit) {
-            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwoAdjoiningPolynomialsSmoothly(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT);
-            plotPolynomial(p1_x, fittedPolynomials.getFirst(), plot, 3, "p1", Color.LIGHT_GRAY);
-            plotPolynomial(p2_x, fittedPolynomials.getSecond(), plot, 4, "p2", Color.ORANGE);
-        } else {
+        String title="Polyfit";
+        if (demoCase==1) {
             PolynomialFunction p1Polynomial = PolyFitterUtil.fitSamplesDefault(p1_x, p1_y, DEGREE_TO_FIT);
             PolynomialFunction p2Polynomial = PolyFitterUtil.fitSamplesDefault(p2_x, p2_y, DEGREE_TO_FIT);
-            plotPolynomial(p1_x, p1Polynomial, plot, 5, "p1", Color.LIGHT_GRAY);
-            plotPolynomial(p2_x, p2Polynomial, plot, 6, "p2", Color.ORANGE);
+            plotPolynomial(p1_x, p1Polynomial, plot, 3, "p1", Color.LIGHT_GRAY);
+            plotPolynomial(p2_x, p2Polynomial, plot, 4, "p2", Color.ORANGE);
+            title+=" reference";
+        } else if (demoCase==2) {
+            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwoAdjoiningPolynomialsSmoothly(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT,10,10);
+            plotPolynomial(p1_x, fittedPolynomials.getFirst(), plot, 3, "p1", Color.LIGHT_GRAY);
+            plotPolynomial(p2_x, fittedPolynomials.getSecond(), plot, 4, "p2", Color.ORANGE);
+            title+=" continuous and deriv-continuous";
+        } else if (demoCase==3) {
+            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwoAdjoiningPolynomialsSmoothly(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT,1000,0);
+            plotPolynomial(p1_x, fittedPolynomials.getFirst(), plot, 3, "p1", Color.LIGHT_GRAY);
+            plotPolynomial(p2_x, fittedPolynomials.getSecond(), plot, 4, "p2", Color.ORANGE);
+            title+=" continuous and not deriv-continuous";
+        } else if (demoCase==4) {
+            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwoAdjoiningPolynomialsSmoothly(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT,0,100);
+            plotPolynomial(p1_x, fittedPolynomials.getFirst(), plot, 3, "p1", Color.LIGHT_GRAY);
+            plotPolynomial(p2_x, fittedPolynomials.getSecond(), plot, 4, "p2", Color.ORANGE);
+            title+=" not-continuous but deriv-continuous";
         }
 
 
 
+
+
+
         JFreeChart chart = new JFreeChart(
-                "Basic polynomial fit to scatter points",
+                title,
                 null,
                 plot,
                 true);
@@ -91,12 +107,11 @@ public class PolyFitter {
     }
 
     private static XYPlot plotSamplePoints(XYPlot plot, double[] x, double[] y, int id, Color color) {
-        XYSeries series = new XYSeries("Samples from p_"+id);
+        XYSeries series = new XYSeries("Samples from p_" + id);
         for (int i = 0; i < x.length; i++) {
             series.add(x[i], y[i]);
         }
         XYSeriesCollection dataset = new XYSeriesCollection(series);
-
 
 
         NumberAxis xAxis = new NumberAxis("X-Axis");
