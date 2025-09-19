@@ -204,11 +204,11 @@ public class PolyFitterUtil {
 
     }
 
-    static Pair<PolynomialFunction, PolynomialFunction> fitTwo(double[] p1xSamples, double[] p1ySamples, double[] p2xSamples, double[] p2ySamples, int degree, double cWeight, double dWeight) {
+    static Pair<PolynomialFunction, PolynomialFunction> fitTwo(double[] p1xSamples, double[] p1ySamples, double[] p2xSamples, double[] p2ySamples, int degree, double cWeight, double dWeight, double s1start, double s1end, double s2end) {
 
 
-        SegmentSampleData s1 = new SegmentSampleData(p1xSamples, p1ySamples, p1xSamples[0], p1xSamples[p1xSamples.length - 1]);
-        SegmentSampleData s2 = new SegmentSampleData(p2xSamples, p2ySamples, p1xSamples[p1xSamples.length - 1], p2ySamples[p2ySamples.length - 1]);
+        SegmentSampleData s1 = new SegmentSampleData(p1xSamples, p1ySamples, s1start, s1end );
+        SegmentSampleData s2 = new SegmentSampleData(p2xSamples, p2ySamples, s1end, s2end);
 
         //SegmentSampleData s2 = new SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1]), p2xSamples[p2xSamples.length-1]));
 
@@ -219,6 +219,26 @@ public class PolyFitterUtil {
         return new Pair<>(p1, p2);
 
     }
+
+    static List<PolynomialFunction> fitThree(double[] p1xSamples, double[] p1ySamples, double[] p2xSamples, double[] p2ySamples, double[] p3xSamples, double[] p3ySamples, int degree, double cWeight, double dWeight, double s1start, double s1end, double s2end, double s3end) {
+
+
+        SegmentSampleData s1 = new SegmentSampleData(p1xSamples, p1ySamples, s1start, s1end );
+        SegmentSampleData s2 = new SegmentSampleData(p2xSamples, p2ySamples, s1end, s2end);
+        SegmentSampleData s3 = new SegmentSampleData(p3xSamples, p3ySamples, s2end, s3end);
+
+        //SegmentSampleData s2 = new SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1]), p2xSamples[p2xSamples.length-1]));
+
+        List<List<Double>> coeffs = polyfitMultiple(List.of(s1, s2,s3), degree + 1, cWeight, dWeight);
+        PolynomialFunction p1 = new PolynomialFunction(coeffs.get(0).stream().mapToDouble(Double::doubleValue).toArray());
+        PolynomialFunction p2 = new PolynomialFunction(coeffs.get(1).stream().mapToDouble(Double::doubleValue).toArray());
+        PolynomialFunction p3 = new PolynomialFunction(coeffs.get(2).stream().mapToDouble(Double::doubleValue).toArray());
+
+        return List.of(p1,p2,p3);
+
+    }
+
+
 
 
     /* default polyfit algorithm, for comparison */

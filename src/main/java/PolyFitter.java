@@ -12,6 +12,7 @@ import org.jfree.data.xy.XYSeriesCollection;
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.List;
 
 public class PolyFitter {
 
@@ -22,7 +23,7 @@ public class PolyFitter {
         //simpleDemo1(2);
         //simpleDemo1(3);
         //simpleDemo1(4);
-        simpleDemo1(5);
+        simpleDemo1(6);
     }
 
 
@@ -34,9 +35,10 @@ public class PolyFitter {
 
 
         XYPlot plot = new XYPlot();
-        plotSamplePoints(plot, p1_x, p1_y, 1, Color.DARK_GRAY);
-        plotSamplePoints(plot, p2_x, p2_y, 2, Color.BLUE);
-
+        if (demoCase<5) {
+            plotSamplePoints(plot, p1_x, p1_y, 1, Color.DARK_GRAY);
+            plotSamplePoints(plot, p2_x, p2_y, 2, Color.BLUE);
+        }
         /*
         PolynomialFunction p1Polynomial = PolyFitterUtil.fitSamplesDefault(p1_x, p1_y, DEGREE_TO_FIT);
         PolynomialFunction p2Polynomial = PolyFitterUtil.fitSamplesDefault(p2_x, p2_y, DEGREE_TO_FIT);
@@ -66,16 +68,47 @@ public class PolyFitter {
             plotPolynomial(p2_x, fittedPolynomials.getSecond(), plot, 4, "p2", Color.ORANGE);
             title += " not-continuous but deriv-continuous";
         } else if (demoCase == 5) {
+            p1_x = new double[]{1.02, 2.2, 2};
+            p1_y = new double[]{1.4, 5.765, 4};
+            p2_x = new double[]{11.0, 12.2, 12.0, 13.123, 13.2, 14.123};
+            p2_y = new double[]{11.4, 15.765, 11.4, 17.0, 15.765, 17.0};
+
+            double t1=1;
+            double t2=3.123;
+            double t3=17;
+
+            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwo(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT, 3, 3,t1,t2,t3);
+            plotPolynomial(p1_x, fittedPolynomials.getFirst(), plot, 3, "p1", Color.LIGHT_GRAY,t1,t2);
+            plotPolynomial(p2_x, fittedPolynomials.getSecond(), plot, 4, "p2", Color.ORANGE, t2,t3);
+            title += " 2 segments joining";
+            plotSamplePoints(plot, p1_x, p1_y, 1, Color.DARK_GRAY);
+            plotSamplePoints(plot, p2_x, p2_y, 2, Color.BLUE);
+
+        } else if (demoCase == 6) {
             p1_x = new double[]{1.02, 2.2, 3.123};
             p1_y = new double[]{1.4, 5.765, 7.0};
             p2_x = new double[]{11.0, 12.2, 12.0, 13.123, 13.2, 14.123};
             p2_y = new double[]{11.4, 15.765, 11.4, 17.0, 15.765, 17.0};
 
+            double[] p3_x = new double[]{18, 19, 20};
+            double[] p3_y = new double[]{10, 15, 13};
 
-            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwo(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT, 0.3, 3);
-            plotPolynomial(p1_x, fittedPolynomials.getFirst(), plot, 3, "p1", Color.LIGHT_GRAY,1,3.123);
-            plotPolynomial(p2_x, fittedPolynomials.getSecond(), plot, 4, "p2", Color.ORANGE, 3.123,17);
-            title += " new - joined";
+            double t1=1;
+            double t2=3.123;
+            double t3=17;
+            double t4=21;
+
+
+            List<PolynomialFunction> result = PolyFitterUtil.fitThree(p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, DEGREE_TO_FIT, 0.3, 3, t1, t2, t3, t4);
+            plotPolynomial(p1_x, result.get(0), plot, 4, "p1", Color.LIGHT_GRAY, t1,t2);
+            plotPolynomial(p2_x, result.get(1), plot, 5, "p2", Color.ORANGE, t2,t3);
+            plotPolynomial(p3_x, result.get(2), plot, 6, "p3", Color.RED, t3,t4);
+
+            plotSamplePoints(plot, p1_x, p1_y, 1, Color.DARK_GRAY);
+            plotSamplePoints(plot, p2_x, p2_y, 2, Color.BLUE);
+            plotSamplePoints(plot, p3_x, p3_y, 3, Color.DARK_GRAY);
+
+            title += " 3 segments joining";
         }
 
 
