@@ -19,46 +19,52 @@ import java.util.stream.IntStream;
 
 public class PolyFitterUtil {
 
-    public static record SegmentSampleData(double[] xSamples, double[] ySamples, double startTime, double EndTime) {
+    public static record SegmentSampleData(double[] xSamples, double[] ySamples, double startTime, double endTime) {
     }
 
-    ;
-
-    public static List<List<Double>> polyfitMultiple(List<SegmentSampleData> segments, int coeffCount, double continuityWeight, double derivContinuityWeight) {
+    /*
+     * In the returned list, list.get(i) is a list of size {coeffCount} containing the optimal polynomial coefficients for the i:th segment passed in
+     *
+     * Example: Suppose we have 3 segments defined by intervals [t_0,t_1], [t_1,t_2], [t_2,t_3], and a handful of sample points {(x_i,y_i)} in each segment,
+     * this algorithm then tries to find 3 polynomials p_1(t), p_2(t), p_3(t) that best matches the sample points, AND that best matches the continuity conditions
+     *  p_1(t_1)=p_2(t_1)   (continuity from segment 1 to 2)
+     *  p_2(t_2)=p_3(t_2)   (continuity from segment 2 to 3)
+     *  p_1'(t_1)=p_2'(t_1) (derivative-continuity from segment 1 to 2)
+     *  p_2'(t_2)=p_3'(t_2) (derivative-continuity from segment 2 to 3)
+     *
+     * The sample-point-fit vs continuity-fit trade-off can be tweaked using the weight parameters {continuityWeight} and {derivativeContinuityWeight}
+     */
+    public static List<List<Double>> polyfitMultiple(List<SegmentSampleData> segments, int coeffCount, double continuityWeight, double derivativeContinuityWeight) {
         int totalNumberOfSampleDataRows = segments.stream().mapToInt(s -> s.xSamples().length).sum();
         int totalNumberOfCoefficients = segments.size() * coeffCount;
         int numberOfJunctions = segments.size() - 1;
-        /*
-            We are trying to set up an optimization problem Ac=b, where we want to find c that minimizes |Ac-b|
-            A: matrix of dimensions m x n, where first {totalNumberOfSampleDataRows} rows correspond to sample points,
-                then, we add rows to enforce continuity. If segment1 and segment2 meet at x0, the condition is p_1(x0)=p_2(x0)
-            c: vector of dimensions n x 1, containing all segment-samples' polynomial coefficients
-            b: vector of dimensions m x 1, containing all segment-samples' ySamples-values
-         */
         int m = totalNumberOfSampleDataRows + numberOfJunctions * 2;
         int n = totalNumberOfCoefficients;
-
-        double[] weights = setupWeights(continuityWeight, derivContinuityWeight, m, totalNumberOfSampleDataRows, numberOfJunctions);
+        /*
+            Goal: set up the optimization problem of minimizing |Ac-b| over (coefficients) c
+            A: matrix of dimensions m x n, one row for each sample, plus extra rows for continuity conditions
+            c: vector of dimensions n x 1, coefficients
+            b: vector of dimensions m x 1, ySamples
+         */
+        double[] weights = setupWeights(continuityWeight, derivativeContinuityWeight, m, totalNumberOfSampleDataRows, numberOfJunctions);
         RealMatrix A = new Array2DRowRealMatrix(m, n);
         RealVector b = new ArrayRealVector(m);
         updateMatrixFromSamplePoints(0, segments, coeffCount, weights, n, A, b);
         updateMatrixWithContinuityConditions(segments, coeffCount, numberOfJunctions, weights, totalNumberOfSampleDataRows, b, n, A, false);
-        updateMatrixWithContinuityConditions(segments, coeffCount, numberOfJunctions, weights, totalNumberOfSampleDataRows+numberOfJunctions, b, n, A, true);
+        updateMatrixWithContinuityConditions(segments, coeffCount, numberOfJunctions, weights, totalNumberOfSampleDataRows + numberOfJunctions, b, n, A, true);
+
         LeastSquaresProblem lsp = new LeastSquaresBuilder()
-                .start(new double[n]) // zeroes as guess
-                .model(p -> A.operate(p), p -> A.getData()) // linear model
+                .start(new double[n])
+                .model(p -> A.operate(p), p -> A.getData())
                 .target(b)
                 .lazyEvaluation(false)
                 .maxEvaluations(1000)
                 .maxIterations(1000)
                 .checkerPair(new SimpleVectorValueChecker(1e-12, 1e-12))
                 .build();
-
         LevenbergMarquardtOptimizer optimizer = new LevenbergMarquardtOptimizer();
         LeastSquaresOptimizer.Optimum optimizeResult = optimizer.optimize(lsp);
-
         List<Double> allCoeffs = Arrays.stream(optimizeResult.getPoint().toArray()).boxed().toList();
-
         return IntStream.range(0, allCoeffs.size() / coeffCount)
                 .mapToObj(i -> (List<Double>) new ArrayList<>(allCoeffs.subList(coeffCount * i, coeffCount * (i + 1))))
                 .toList();
@@ -84,7 +90,7 @@ public class PolyFitterUtil {
             double rowWeight = Math.sqrt(weights[rowIndex]);
             b.setEntry(rowIndex, 0);
 
-            double x0 = segments.get(i).EndTime();
+            double x0 = segments.get(i).endTime();
             for (int j = 0; j < n; j++) {
                 if (j >= columnIndex && j < columnIndex + coeffCount) {
                     int power = j - columnIndex;
@@ -207,7 +213,7 @@ public class PolyFitterUtil {
     static Pair<PolynomialFunction, PolynomialFunction> fitTwo(double[] p1xSamples, double[] p1ySamples, double[] p2xSamples, double[] p2ySamples, int degree, double cWeight, double dWeight, double s1start, double s1end, double s2end) {
 
 
-        SegmentSampleData s1 = new SegmentSampleData(p1xSamples, p1ySamples, s1start, s1end );
+        SegmentSampleData s1 = new SegmentSampleData(p1xSamples, p1ySamples, s1start, s1end);
         SegmentSampleData s2 = new SegmentSampleData(p2xSamples, p2ySamples, s1end, s2end);
 
         //SegmentSampleData s2 = new SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1]), p2xSamples[p2xSamples.length-1]));
@@ -223,22 +229,22 @@ public class PolyFitterUtil {
     static List<PolynomialFunction> fitThree(double[] p1xSamples, double[] p1ySamples, double[] p2xSamples, double[] p2ySamples, double[] p3xSamples, double[] p3ySamples, int degree, double cWeight, double dWeight, double s1start, double s1end, double s2end, double s3end) {
 
 
-        SegmentSampleData s1 = new SegmentSampleData(p1xSamples, p1ySamples, s1start, s1end );
+        SegmentSampleData s1 = new SegmentSampleData(p1xSamples, p1ySamples, s1start, s1end);
         SegmentSampleData s2 = new SegmentSampleData(p2xSamples, p2ySamples, s1end, s2end);
         SegmentSampleData s3 = new SegmentSampleData(p3xSamples, p3ySamples, s2end, s3end);
 
         //SegmentSampleData s2 = new SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1]), p2xSamples[p2xSamples.length-1]));
+        List<List<Double>> coeffs2 = polyfitMultiple(List.of(s1), degree + 1, cWeight, dWeight);
+        System.out.println(coeffs2);
 
-        List<List<Double>> coeffs = polyfitMultiple(List.of(s1, s2,s3), degree + 1, cWeight, dWeight);
+        List<List<Double>> coeffs = polyfitMultiple(List.of(s1, s2, s3), degree + 1, cWeight, dWeight);
         PolynomialFunction p1 = new PolynomialFunction(coeffs.get(0).stream().mapToDouble(Double::doubleValue).toArray());
         PolynomialFunction p2 = new PolynomialFunction(coeffs.get(1).stream().mapToDouble(Double::doubleValue).toArray());
         PolynomialFunction p3 = new PolynomialFunction(coeffs.get(2).stream().mapToDouble(Double::doubleValue).toArray());
 
-        return List.of(p1,p2,p3);
+        return List.of(p1, p2, p3);
 
     }
-
-
 
 
     /* default polyfit algorithm, for comparison */
