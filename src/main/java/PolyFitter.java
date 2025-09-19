@@ -72,7 +72,7 @@ public class PolyFitter {
             p2_y = new double[]{11.4, 15.765, 11.4, 17.0, 15.765, 17.0};
 
 
-            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwo(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT, 0.3, 10);
+            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwo(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT, 0.3, 3);
             plotPolynomial(p1_x, fittedPolynomials.getFirst(), plot, 3, "p1", Color.LIGHT_GRAY,1,3.123);
             plotPolynomial(p2_x, fittedPolynomials.getSecond(), plot, 4, "p2", Color.ORANGE, 3.123,17);
             title += " new - joined";

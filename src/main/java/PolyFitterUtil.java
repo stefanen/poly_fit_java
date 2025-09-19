@@ -19,93 +19,31 @@ import java.util.stream.IntStream;
 
 public class PolyFitterUtil {
 
-    public static record SegmentSampleData(double[] xSamples, double[] ySamples, double startTime, double EndTime) {};
+    public static record SegmentSampleData(double[] xSamples, double[] ySamples, double startTime, double EndTime) {
+    }
+
+    ;
 
     public static List<List<Double>> polyfitMultiple(List<SegmentSampleData> segments, int coeffCount, double continuityWeight, double derivContinuityWeight) {
-        int totalNumberOfSampleDataRows = segments.stream().mapToInt(s->s.xSamples().length).sum();
-        int totalNumberOfCoefficients=segments.size()*coeffCount;
-        int numberOfJunctions = segments.size()-1;
+        int totalNumberOfSampleDataRows = segments.stream().mapToInt(s -> s.xSamples().length).sum();
+        int totalNumberOfCoefficients = segments.size() * coeffCount;
+        int numberOfJunctions = segments.size() - 1;
         /*
             We are trying to set up an optimization problem Ac=b, where we want to find c that minimizes |Ac-b|
-            A: matrix of dimensions m x n, where first {totalNumberOfSampleDataRows} rows correspond to sample points
+            A: matrix of dimensions m x n, where first {totalNumberOfSampleDataRows} rows correspond to sample points,
+                then, we add rows to enforce continuity. If segment1 and segment2 meet at x0, the condition is p_1(x0)=p_2(x0)
             c: vector of dimensions n x 1, containing all segment-samples' polynomial coefficients
             b: vector of dimensions m x 1, containing all segment-samples' ySamples-values
          */
-        int m = totalNumberOfSampleDataRows + numberOfJunctions*2;
+        int m = totalNumberOfSampleDataRows + numberOfJunctions * 2;
         int n = totalNumberOfCoefficients;
 
-        double[] weights = new double[m];
-        for (int i = 0; i < m; i++) {
-            if (i<totalNumberOfSampleDataRows) {
-                weights[i] = 1.0; //could give weights to samples as input if we wanted
-            } else if (i<totalNumberOfSampleDataRows+numberOfJunctions) {
-                weights[i] = continuityWeight;
-            } else {
-                weights[i] = derivContinuityWeight;
-            }
-        }
-
+        double[] weights = setupWeights(continuityWeight, derivContinuityWeight, m, totalNumberOfSampleDataRows, numberOfJunctions);
         RealMatrix A = new Array2DRowRealMatrix(m, n);
         RealVector b = new ArrayRealVector(m);
-
-        //setup part of matrix corresponding to normal sample fitting
-        int rowIndex=0;
-        int columnIndex=0;
-        for (var segmentData : segments) {
-            for (int i = 0; i<segmentData.xSamples().length; i++) {
-                double currX=segmentData.xSamples()[i];
-                double currY=segmentData.ySamples()[i];
-                double rowWeight = Math.sqrt(weights[rowIndex]);
-
-                for (int j=0; j<n; j++) {
-                    if (j>=columnIndex && j<columnIndex+coeffCount) {
-                        A.setEntry(rowIndex, j, Math.pow(currX, j-columnIndex) * rowWeight);
-                    } else {
-                        A.setEntry(rowIndex, j, 0.0);
-                    }
-                }
-                b.setEntry(rowIndex, currY*rowWeight);
-                rowIndex++;
-            }
-            columnIndex=columnIndex+coeffCount;
-        }
-
-        //setup continuity conditions
-        columnIndex=0;
-        for (int i=0; i<numberOfJunctions; i++) {
-            double rowWeight = Math.sqrt(weights[rowIndex]);
-            b.setEntry(rowIndex, 0);
-            for (int j=0; j<n; j++) {
-                if (j>=columnIndex && j<columnIndex+coeffCount) {
-                    A.setEntry(rowIndex, j, Math.pow(segments.get(i).EndTime(), j - columnIndex) * rowWeight);
-                } else if (j>=columnIndex+coeffCount && j<columnIndex+coeffCount*2) {
-                    A.setEntry(rowIndex, j, -1.0*Math.pow(segments.get(i+1).startTime(), j - columnIndex - coeffCount) * rowWeight);
-                } else {
-                    A.setEntry(rowIndex, j, 0.0);
-                }
-            }
-            columnIndex=columnIndex+coeffCount;
-            rowIndex++;
-        }
-
-        //setup deriv continuity conditions
-
-
-
-
-        /*
-        for (int j = 0; j < nParams; j++) {
-            if (j == 0) {
-                A.setEntry(derivativeRowIndex, j, 0.0);
-            } else {
-                A.setEntry(derivativeRowIndex, j, j * Math.pow(x0, j - 1) * weights[derivativeRowIndex]);
-            }
-        }
-
-        b.setEntry(nRows - 1, y0 * weights[derivativeRowIndex]);
-        */
-
-
+        updateMatrixFromSamplePoints(0, segments, coeffCount, weights, n, A, b);
+        updateMatrixWithContinuityConditions(segments, coeffCount, numberOfJunctions, weights, totalNumberOfSampleDataRows, b, n, A, false);
+        updateMatrixWithContinuityConditions(segments, coeffCount, numberOfJunctions, weights, totalNumberOfSampleDataRows+numberOfJunctions, b, n, A, true);
         LeastSquaresProblem lsp = new LeastSquaresBuilder()
                 .start(new double[n]) // zeroes as guess
                 .model(p -> A.operate(p), p -> A.getData()) // linear model
@@ -126,7 +64,72 @@ public class PolyFitterUtil {
                 .toList();
     }
 
+    private static double[] setupWeights(double continuityWeight, double derivContinuityWeight, int m, int totalNumberOfSampleDataRows, int numberOfJunctions) {
+        double[] weights = new double[m];
+        for (int i = 0; i < m; i++) {
+            if (i < totalNumberOfSampleDataRows) {
+                weights[i] = 1.0; //could give weights to samples as input if we wanted
+            } else if (i < totalNumberOfSampleDataRows + numberOfJunctions) {
+                weights[i] = continuityWeight;
+            } else {
+                weights[i] = derivContinuityWeight;
+            }
+        }
+        return weights;
+    }
 
+    private static void updateMatrixWithContinuityConditions(List<SegmentSampleData> segments, int coeffCount, int numberOfJunctions, double[] weights, int rowIndex, RealVector b, int n, RealMatrix A, boolean isDerivative) {
+        int columnIndex = 0;
+        for (int i = 0; i < numberOfJunctions; i++) {
+            double rowWeight = Math.sqrt(weights[rowIndex]);
+            b.setEntry(rowIndex, 0);
+
+            double x0 = segments.get(i).EndTime();
+            for (int j = 0; j < n; j++) {
+                if (j >= columnIndex && j < columnIndex + coeffCount) {
+                    int power = j - columnIndex;
+                    if (isDerivative) {
+                        A.setEntry(rowIndex, j, power * Math.pow(x0, power - 1) * rowWeight);
+                    } else {
+                        A.setEntry(rowIndex, j, Math.pow(x0, power) * rowWeight);
+                    }
+                } else if (j >= columnIndex + coeffCount && j < columnIndex + coeffCount * 2) {
+                    int power = j - columnIndex - coeffCount;
+                    if (isDerivative) {
+                        A.setEntry(rowIndex, j, -1.0 * power * Math.pow(x0, power - 1) * rowWeight);
+                    } else {
+                        A.setEntry(rowIndex, j, -1.0 * Math.pow(x0, power) * rowWeight);
+                    }
+                } else {
+                    A.setEntry(rowIndex, j, 0.0);
+                }
+            }
+            columnIndex = columnIndex + coeffCount;
+            rowIndex++;
+        }
+    }
+
+    private static void updateMatrixFromSamplePoints(int rowIndex, List<SegmentSampleData> segments, int coeffCount, double[] weights, int n, RealMatrix A, RealVector b) {
+        int columnIndex = 0;
+        for (var segmentData : segments) {
+            for (int i = 0; i < segmentData.xSamples().length; i++) {
+                double currX = segmentData.xSamples()[i];
+                double currY = segmentData.ySamples()[i];
+                double rowWeight = Math.sqrt(weights[rowIndex]);
+
+                for (int j = 0; j < n; j++) {
+                    if (j >= columnIndex && j < columnIndex + coeffCount) {
+                        A.setEntry(rowIndex, j, Math.pow(currX, j - columnIndex) * rowWeight);
+                    } else {
+                        A.setEntry(rowIndex, j, 0.0);
+                    }
+                }
+                b.setEntry(rowIndex, currY * rowWeight);
+                rowIndex++;
+            }
+            columnIndex = columnIndex + coeffCount;
+        }
+    }
 
 
     /* fit polynomial p to xSamples-ySamples samples, but also to the derivative having a target value at supplied point p'(x0)=y0  */
@@ -193,7 +196,6 @@ public class PolyFitterUtil {
         double derivContinuityWeight = dWeight;
 
 
-
         PolynomialFunction p1 = new PolynomialFunction(fit(p1xSamples, p1ySamples, degree, commonPointX, targetDerivativeInCommonPoint, continuityWeight, derivContinuityWeight));
         PolynomialFunction p2 = new PolynomialFunction(fit(p2xSamples, p2ySamples, degree, commonPointX, targetDerivativeInCommonPoint, continuityWeight, derivContinuityWeight));
         System.out.println(Arrays.toString(p1.getCoefficients()));
@@ -205,8 +207,8 @@ public class PolyFitterUtil {
     static Pair<PolynomialFunction, PolynomialFunction> fitTwo(double[] p1xSamples, double[] p1ySamples, double[] p2xSamples, double[] p2ySamples, int degree, double cWeight, double dWeight) {
 
 
-        SegmentSampleData s1 = new SegmentSampleData(p1xSamples,p1ySamples,p1xSamples[0],p1xSamples[p1xSamples.length-1]);
-        SegmentSampleData s2 = new SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1], p2ySamples[p2ySamples.length-1]);
+        SegmentSampleData s1 = new SegmentSampleData(p1xSamples, p1ySamples, p1xSamples[0], p1xSamples[p1xSamples.length - 1]);
+        SegmentSampleData s2 = new SegmentSampleData(p2xSamples, p2ySamples, p1xSamples[p1xSamples.length - 1], p2ySamples[p2ySamples.length - 1]);
 
         //SegmentSampleData s2 = new SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1]), p2xSamples[p2xSamples.length-1]));
 
