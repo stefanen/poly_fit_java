@@ -19,9 +19,10 @@ public class PolyFitter {
 
     public static void main(String[] args) {
         //simpleDemo1(1);
-        simpleDemo1(2);
-        simpleDemo1(3);
-        simpleDemo1(4);
+        //simpleDemo1(2);
+        //simpleDemo1(3);
+        //simpleDemo1(4);
+        simpleDemo1(5);
     }
 
 
@@ -41,33 +42,41 @@ public class PolyFitter {
         PolynomialFunction p2Polynomial = PolyFitterUtil.fitSamplesDefault(p2_x, p2_y, DEGREE_TO_FIT);
         */
 
-        String title="Polyfit";
-        if (demoCase==1) {
+
+        String title = "Polyfit";
+        if (demoCase == 1) {
             PolynomialFunction p1Polynomial = PolyFitterUtil.fitSamplesDefault(p1_x, p1_y, DEGREE_TO_FIT);
             PolynomialFunction p2Polynomial = PolyFitterUtil.fitSamplesDefault(p2_x, p2_y, DEGREE_TO_FIT);
             plotPolynomial(p1_x, p1Polynomial, plot, 3, "p1", Color.LIGHT_GRAY);
             plotPolynomial(p2_x, p2Polynomial, plot, 4, "p2", Color.ORANGE);
-            title+=" reference";
-        } else if (demoCase==2) {
-            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwoAdjoiningPolynomialsSmoothly(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT,10,10);
+            title += " reference";
+        } else if (demoCase == 2) {
+            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwoAdjoiningPolynomialsSmoothly(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT, 10, 10);
             plotPolynomial(p1_x, fittedPolynomials.getFirst(), plot, 3, "p1", Color.LIGHT_GRAY);
             plotPolynomial(p2_x, fittedPolynomials.getSecond(), plot, 4, "p2", Color.ORANGE);
-            title+=" continuous and deriv-continuous";
-        } else if (demoCase==3) {
-            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwoAdjoiningPolynomialsSmoothly(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT,1000,0);
+            title += " continuous and deriv-continuous";
+        } else if (demoCase == 3) {
+            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwoAdjoiningPolynomialsSmoothly(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT, 1000, 0);
             plotPolynomial(p1_x, fittedPolynomials.getFirst(), plot, 3, "p1", Color.LIGHT_GRAY);
             plotPolynomial(p2_x, fittedPolynomials.getSecond(), plot, 4, "p2", Color.ORANGE);
-            title+=" continuous and not deriv-continuous";
-        } else if (demoCase==4) {
-            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwoAdjoiningPolynomialsSmoothly(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT,0,100);
+            title += " continuous and not deriv-continuous";
+        } else if (demoCase == 4) {
+            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwoAdjoiningPolynomialsSmoothly(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT, 0, 100);
             plotPolynomial(p1_x, fittedPolynomials.getFirst(), plot, 3, "p1", Color.LIGHT_GRAY);
             plotPolynomial(p2_x, fittedPolynomials.getSecond(), plot, 4, "p2", Color.ORANGE);
-            title+=" not-continuous but deriv-continuous";
+            title += " not-continuous but deriv-continuous";
+        } else if (demoCase == 5) {
+            p1_x = new double[]{1.02, 2.2, 3.123};
+            p1_y = new double[]{1.4, 5.765, 7.0};
+            p2_x = new double[]{11.0, 12.2, 12.0, 13.123, 13.2, 14.123};
+            p2_y = new double[]{11.4, 15.765, 11.4, 17.0, 15.765, 17.0};
+
+
+            Pair<PolynomialFunction, PolynomialFunction> fittedPolynomials = PolyFitterUtil.fitTwo(p1_x, p1_y, p2_x, p2_y, DEGREE_TO_FIT, 0.3, 10);
+            plotPolynomial(p1_x, fittedPolynomials.getFirst(), plot, 3, "p1", Color.LIGHT_GRAY,1,3.123);
+            plotPolynomial(p2_x, fittedPolynomials.getSecond(), plot, 4, "p2", Color.ORANGE, 3.123,17);
+            title += " new - joined";
         }
-
-
-
-
 
 
         JFreeChart chart = new JFreeChart(
@@ -82,6 +91,30 @@ public class PolyFitter {
         frame.add(new ChartPanel(chart));
         frame.pack();
         frame.setVisible(true);
+    }
+
+
+
+    private static void plotPolynomial(double[] x, PolynomialFunction polynomial, XYPlot plot, int id, String name, Color color, double start, double end) {
+        java.util.List<Double> xValues = new ArrayList<>();
+        java.util.List<Double> yValues = new ArrayList<>();
+
+        XYSeries series2 = new XYSeries(name);
+        for (double i = start; i < end; i += 0.01) {
+
+            series2.add(i, polynomial.value(i));
+            xValues.add(i);
+            yValues.add(polynomial.value(i));
+        }
+
+        XYSeriesCollection dataset2 = new XYSeriesCollection(series2);
+        XYLineAndShapeRenderer renderer2 = new XYLineAndShapeRenderer(true, true);
+        renderer2.setSeriesPaint(0, color);
+        plot.setDataset(id, new XYSeriesCollection(series2));
+        plot.setRenderer(id, renderer2);
+
+
+        plot.setDatasetRenderingOrder(DatasetRenderingOrder.REVERSE);
     }
 
     private static void plotPolynomial(double[] x, PolynomialFunction polynomial, XYPlot plot, int id, String name, Color color) {
