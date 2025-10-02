@@ -1,4 +1,5 @@
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
+import org.apache.commons.math3.fitting.WeightedObservedPoint;
 import org.apache.commons.math3.util.Pair;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -99,7 +100,57 @@ public class PolyFitter {
             double t4=21;
 
 
-            List<PolynomialFunction> result = PolyFitterUtil.fitThree(p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, DEGREE_TO_FIT, 0.3, 3, t1, t2, t3, t4);
+
+/*
+            PolyFitterUtil.SegmentSampleData s1 = new PolyFitterUtil.SegmentSampleData(p1xSamples, p1ySamples, s1start, s1end);
+            PolyFitterUtil.SegmentSampleData s2 = new PolyFitterUtil.SegmentSampleData(p2xSamples, p2ySamples, s1end, s2end);
+            PolyFitterUtil.SegmentSampleData s3 = new PolyFitterUtil.SegmentSampleData(p3xSamples, p3ySamples, s2end, s3end);
+
+            //SegmentSampleData s2 = new SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1]), p2xSamples[p2xSamples.length-1]));
+            List<List<Double>> coeffs2 = polyfitMultiple(List.of(s1), degree + 1, cWeight, dWeight);
+            System.out.println(coeffs2);
+
+            List<List<Double>> coeffs = polyfitMultiple(List.of(s1, s2, s3), degree + 1, cWeight, dWeight);
+            PolynomialFunction p1 = new PolynomialFunction(coeffs.get(0).stream().mapToDouble(Double::doubleValue).toArray());
+            PolynomialFunction p2 = new PolynomialFunction(coeffs.get(1).stream().mapToDouble(Double::doubleValue).toArray());
+            PolynomialFunction p3 = new PolynomialFunction(coeffs.get(2).stream().mapToDouble(Double::doubleValue).toArray());
+  */
+
+
+            List<WeightedObservedPoint> samples1 = new ArrayList<>();
+            for (int i=0; i<p1_x.length;i++) {
+                samples1.add(new WeightedObservedPoint(1.0,p1_x[i],p1_y[i]));
+            }
+            SegmentSampleData segment1 = new SegmentSampleData(t1, t2, samples1, 0.3,3);
+
+            List<WeightedObservedPoint> samples2 = new ArrayList<>();
+            for (int i=0; i<p2_x.length;i++) {
+                samples2.add(new WeightedObservedPoint(1.0,p2_x[i],p2_y[i]));
+            }
+            SegmentSampleData segment2 = new SegmentSampleData(t2, t3, samples2, 0.3,3);
+
+            List<WeightedObservedPoint> samples3 = new ArrayList<>();
+            for (int i=0; i<p3_x.length;i++) {
+                samples3.add(new WeightedObservedPoint(1.0,p3_x[i],p3_y[i]));
+            }
+            SegmentSampleData segment3 = new SegmentSampleData(t3, t4, samples3, 3,3);
+
+            List<SegmentSampleData> segments = List.of(segment1,segment2,segment3);
+
+            PolyfitDto dto = new PolyfitDto(segments,DEGREE_TO_FIT);
+            CustomPolyFitter customPolyFitter = new CustomPolyFitter(dto);
+
+            List<List<Double>> coeffs = customPolyFitter.doPolyFit();
+            PolynomialFunction p1 = new PolynomialFunction(coeffs.get(0).stream().mapToDouble(Double::doubleValue).toArray());
+            PolynomialFunction p2 = new PolynomialFunction(coeffs.get(1).stream().mapToDouble(Double::doubleValue).toArray());
+            PolynomialFunction p3 = new PolynomialFunction(coeffs.get(2).stream().mapToDouble(Double::doubleValue).toArray());
+
+            List<PolynomialFunction> result = List.of(p1,p2,p3);
+
+
+
+
+
             plotPolynomial(p1_x, result.get(0), plot, 4, "p1", Color.LIGHT_GRAY, t1,t2);
             plotPolynomial(p2_x, result.get(1), plot, 5, "p2", Color.ORANGE, t2,t3);
             plotPolynomial(p3_x, result.get(2), plot, 6, "p3", Color.RED, t3,t4);

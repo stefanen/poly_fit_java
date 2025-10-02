@@ -19,6 +19,8 @@ import java.util.stream.IntStream;
 
 public class PolyFitterUtil {
 
+
+
     public static record SegmentSampleData(double[] xSamples, double[] ySamples, double startTime, double endTime) {
     }
 
@@ -32,8 +34,7 @@ public class PolyFitterUtil {
      *  p_1'(t_1)=p_2'(t_1) (derivative-continuity from segment 1 to 2)
      *  p_2'(t_2)=p_3'(t_2) (derivative-continuity from segment 2 to 3)
      *
-     * The sample-point-fit vs continuity-fit trade-off can be tweaked using the weight parameters {continuityWeight} and {derivativeContinuityWeight}
-     */
+    */
     public static List<List<Double>> polyfitMultiple(List<SegmentSampleData> segments, int coeffCount, double continuityWeight, double derivativeContinuityWeight) {
         int totalNumberOfSampleDataRows = segments.stream().mapToInt(s -> s.xSamples().length).sum();
         int totalNumberOfCoefficients = segments.size() * coeffCount;
@@ -41,7 +42,6 @@ public class PolyFitterUtil {
         int m = totalNumberOfSampleDataRows + numberOfJunctions * 2;
         int n = totalNumberOfCoefficients;
         /*
-            Goal: set up the optimization problem of minimizing |Ac-b| over (coefficients) c
             A: matrix of dimensions m x n, one row for each sample, plus extra rows for continuity conditions
             c: vector of dimensions n x 1, coefficients
             b: vector of dimensions m x 1, ySamples
@@ -136,6 +136,9 @@ public class PolyFitterUtil {
             columnIndex = columnIndex + coeffCount;
         }
     }
+
+
+
 
 
     /* fit polynomial p to xSamples-ySamples samples, but also to the derivative having a target value at supplied point p'(x0)=y0  */
