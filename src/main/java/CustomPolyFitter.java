@@ -31,14 +31,29 @@ public class CustomPolyFitter {
         n = polyfitDto.segments().size() * coeffCount;
         numberOfJunctions = polyfitDto.segments().size() - 1;
         m = totalNumberOfSampleDataRows + numberOfJunctions * 2;
+        /*
+        In order to find best fitting polynomial coefficients (for all segments) we translate it into an optimization problem
+        of finding c that minimizes |Ac-b| (c being the vector of all coefficients)
+        */
         A = new Array2DRowRealMatrix(m, n);
         b = new ArrayRealVector(m);
         weights = setupWeights();
-    }
-
-    public List<List<Double>> doPolyFit() {
         addConditionsFromSamplePoints();
         addContinuityConditions();
+    }
+
+    /*
+     * In the returned list, list.get(i) is a list of size {coeffCount} containing the optimal polynomial coefficients for the i:th segment passed in
+     *
+     * Example: Suppose we have 3 segments defined by intervals [t_0,t_1], [t_1,t_2], [t_2,t_3], and a handful of sample points {(x_i,y_i)} in each segment,
+     * this algorithm then tries to find 3 polynomials p_1(t), p_2(t), p_3(t) that best matches the sample points, AND that best matches the continuity conditions
+     *  p_1(t_1)=p_2(t_1)   (continuity from segment 1 to 2)
+     *  p_2(t_2)=p_3(t_2)   (continuity from segment 2 to 3)
+     *  p_1'(t_1)=p_2'(t_1) (derivative-continuity from segment 1 to 2)
+     *  p_2'(t_2)=p_3'(t_2) (derivative-continuity from segment 2 to 3)
+     *
+     */
+    public List<List<Double>> calculateOptimalCoeffs() {
         LeastSquaresProblem lsp = new LeastSquaresBuilder()
                 .start(new double[n])
                 .model(p -> A.operate(p), p -> A.getData())

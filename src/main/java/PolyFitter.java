@@ -140,7 +140,7 @@ public class PolyFitter {
             PolyfitDto dto = new PolyfitDto(segments,DEGREE_TO_FIT);
             CustomPolyFitter customPolyFitter = new CustomPolyFitter(dto);
 
-            List<List<Double>> coeffs = customPolyFitter.doPolyFit();
+            List<List<Double>> coeffs = customPolyFitter.calculateOptimalCoeffs();
             PolynomialFunction p1 = new PolynomialFunction(coeffs.get(0).stream().mapToDouble(Double::doubleValue).toArray());
             PolynomialFunction p2 = new PolynomialFunction(coeffs.get(1).stream().mapToDouble(Double::doubleValue).toArray());
             PolynomialFunction p3 = new PolynomialFunction(coeffs.get(2).stream().mapToDouble(Double::doubleValue).toArray());
