@@ -14,15 +14,16 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 public class CustomPolyFitter {
-    private final PolyfitDto polyfitDto;
-    private final int totalNumberOfSampleDataRows;
-    private final int numberOfJunctions;
-    private final int m;
-    private final int n;
-    private final int coeffCount;
-    private final RealMatrix A;
-    private final RealVector b;
-    private final double[] weights;
+    private PolyfitDto polyfitDto;
+    private int totalNumberOfSampleDataRows;
+    private int numberOfJunctions;
+    private int m;
+    private int n;
+    private int coeffCount;
+    private RealMatrix A;
+    private RealVector b;
+    private double[] weights;
+    public static double best=1000.0;
 
     public CustomPolyFitter(PolyfitDto polyfitDto) {
         this.polyfitDto = polyfitDto;
@@ -40,6 +41,26 @@ public class CustomPolyFitter {
         weights = setupWeights();
         addConditionsFromSamplePoints();
         addContinuityConditions();
+    }
+
+    public static CustomPolyFitter getCstomPolyFitter(PolyfitDto polyfitDto) {
+        var res = new CustomPolyFitter(polyfitDto);
+        res.polyfitDto = polyfitDto;
+        res.totalNumberOfSampleDataRows = polyfitDto.segments().stream().mapToInt(s -> s.samples().size()).sum();
+        res.coeffCount = polyfitDto.degreeToFit() + 1;
+        res.n = polyfitDto.segments().size() * res.coeffCount;
+        res.numberOfJunctions = polyfitDto.segments().size() - 1;
+        res.m = res.totalNumberOfSampleDataRows + res.numberOfJunctions * 2;
+        /*
+        In order to find best fitting polynomial coefficients (for all segments) we translate it into an optimization problem
+        of finding c that minimizes |Ac-b| (c being the vector of all coefficients)
+        */
+        res.A = new Array2DRowRealMatrix(res.m, res.n);
+        res.b = new ArrayRealVector(res.m);
+        res.weights = res.setupWeights();
+        res.addConditionsFromSamplePoints();
+        res.addContinuityConditions();
+        return res;
     }
 
     /*
@@ -67,6 +88,11 @@ public class CustomPolyFitter {
         LeastSquaresOptimizer.Optimum optimizeResult = optimizer.optimize(lsp);
         List<Double> allCoeffs = Arrays.stream(optimizeResult.getPoint().toArray()).boxed().toList();
 
+        var res = optimizeResult.getRMS();
+        if (res <best) {
+            System.out.println("new record"+optimizeResult.getRMS());
+            best=res;
+        }
         return IntStream.range(0, allCoeffs.size() / coeffCount)
                 .mapToObj(i -> (List<Double>) new ArrayList<>(allCoeffs.subList(coeffCount * i, coeffCount * (i + 1))))
                 .toList();

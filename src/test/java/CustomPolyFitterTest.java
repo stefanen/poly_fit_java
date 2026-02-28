@@ -44,7 +44,7 @@ class CustomPolyFitterTest {
 
         double diffAtJunction=Math.abs(new PolynomialFunction(coeffs.get(0).stream().mapToDouble(Double::doubleValue).toArray()).value(10)
                 -new PolynomialFunction(coeffs.get(1).stream().mapToDouble(Double::doubleValue).toArray()).value(10));
-        
+
         Assertions.assertEquals(
                 0.0295,
                 diffAtJunction,
