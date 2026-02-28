@@ -175,19 +175,19 @@ public class DragToDrawChart extends JFrame {
             for (int i = 0; i < p1_x.length; i++) {
                 samples1.add(new WeightedObservedPoint(1.0, p1_x[i], p1_y[i]));
             }
-            SegmentSampleData segment1 = new SegmentSampleData(t1, t2, samples1, 0.3, 3);
+            SegmentSampleData segment1 = new SegmentSampleData(t1, t2, samples1, 0, 0);
 
             List<WeightedObservedPoint> samples2 = new ArrayList<>();
             for (int i = 0; i < p2_x.length; i++) {
                 samples2.add(new WeightedObservedPoint(1.0, p2_x[i], p2_y[i]));
             }
-            SegmentSampleData segment2 = new SegmentSampleData(t2, t3, samples2, 0.3, 3);
+            SegmentSampleData segment2 = new SegmentSampleData(t2, t3, samples2, 30, 10);
 
             List<WeightedObservedPoint> samples3 = new ArrayList<>();
             for (int i = 0; i < p3_x.length; i++) {
                 samples3.add(new WeightedObservedPoint(1.0, p3_x[i], p3_y[i]));
             }
-            SegmentSampleData segment3 = new SegmentSampleData(t3, t4, samples3, 3, 3);
+            SegmentSampleData segment3 = new SegmentSampleData(t3, t4, samples3, 30, 10);
 
             List<SegmentSampleData> segments = List.of(segment1, segment2, segment3);
 
