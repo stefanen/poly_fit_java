@@ -20,6 +20,7 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -27,6 +28,11 @@ import java.util.concurrent.TimeUnit;
 
 public class FunctionFitterToDrawnLine extends JFrame {
 
+    public static final int CONTINUITY_WEIGHT = 30;
+    public static final int DERIVATIVE_CONTINUITY_WEIGHT = 10;
+    public static final int DEGREE_TOFIT = 3;
+    public static final int TOTAL_SEGMENT_COUNT_TO_FIT = 4;
+    public static final int SEGMENT_INTERVAL_SEARCH_SPACE_SIZE = 3000;
     private final XYSeries sampleSeries;
     private final List<Point2D.Double> drawnPoints = new ArrayList<>();
     private final XYPlot plot;
@@ -100,7 +106,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
         }
 
         calculationFuture =
-                scheduledExecutorService.schedule(this::calculate, 1000L, TimeUnit.MILLISECONDS);
+                scheduledExecutorService.schedule(this::calculate, 200L, TimeUnit.MILLISECONDS);
 
     }
 
@@ -126,67 +132,73 @@ public class FunctionFitterToDrawnLine extends JFrame {
     }
 
     private void calculate() {
-        final int degreeTofit=3;
-        final int totalSegmentCountToFit=4;
-        System.out.println(String.format("calculating best polyfit of degree %d using %d segments",degreeTofit,totalSegmentCountToFit));
-
+        System.out.println(String.format("calculating best polyfit of degree %d using %d segments", DEGREE_TOFIT, TOTAL_SEGMENT_COUNT_TO_FIT));
         double globalStartTime = sampleSeries.getMinX();
         double globalEndTime = sampleSeries.getMaxX();
-        double avgDelta= (sampleSeries.getMaxX()-sampleSeries.getMinX())/(totalSegmentCountToFit-1);
-
         List<PolynomialFunction> bestFitResult=List.of();
         List<SegmentSampleData> bestSegments=List.of();
         double bestFitScore = 10000.0;
-        for (int k=0;k<10000;k++){
-            List<Double> intersectionTimes = new ArrayList<>();
-            intersectionTimes.add(globalStartTime);
+        for (int k = 0; k< SEGMENT_INTERVAL_SEARCH_SPACE_SIZE; k++){
 
-            double prev = globalStartTime;
-            for (int i=0; i<totalSegmentCountToFit-1;i++) {
-                double curr = (Math.random() * avgDelta)+prev;
-                intersectionTimes.add(curr);
-                prev = curr;
-            }
-            intersectionTimes.add(globalEndTime);
+            var intersectionTimes = generateRandomIntersectionTimes(globalStartTime,globalEndTime, TOTAL_SEGMENT_COUNT_TO_FIT);
 
             List<SegmentSampleData> segments = new ArrayList<>();
-            for (int i=0; i<totalSegmentCountToFit;i++) {
+            for (int i = 0; i< TOTAL_SEGMENT_COUNT_TO_FIT; i++) {
                 var p = getPartition(intersectionTimes.get(i),intersectionTimes.get(i+1),sampleSeries);
                 SegmentSampleData segment = getSegmentSampleData(p);
                 segments.add(segment);
             }
-            PolyfitDto dto = new PolyfitDto(segments, 3);
+            PolyfitDto dto = new PolyfitDto(segments, DEGREE_TOFIT);
             CustomPolyFitter customPolyFitter = new CustomPolyFitter(dto);
             List<List<Double>> coeffs = customPolyFitter.calculateOptimalCoeffs();
 
             List<PolynomialFunction> result = new ArrayList<>();
-            for (int i=0; i<totalSegmentCountToFit;i++) {
+            for (int i = 0; i< TOTAL_SEGMENT_COUNT_TO_FIT; i++) {
                 PolynomialFunction polynomial = new PolynomialFunction(coeffs.get(i).stream().mapToDouble(Double::doubleValue).toArray());
                 result.add(polynomial);
             }
-            if (CustomPolyFitter.best<bestFitScore) {
-                bestFitScore=CustomPolyFitter.best;
-                System.out.println(String.format("New best segmentation at: %s , fit-value= %f", intersectionTimes,bestFitScore));
+            if (CustomPolyFitter.lastRes <bestFitScore) {
+                bestFitScore=CustomPolyFitter.lastRes;
+                System.out.println(String.format("New best segmentation at: %s , fit-value= %f, after %d tries", intersectionTimes,bestFitScore,k));
                 bestSegments=segments;
                 bestFitResult=result;
             }
+            /*
+            if (k%100==0) {
+                System.out.println(String.format("segmentation at: %s , fit-value= %f, after %d tries", intersectionTimes,CustomPolyFitter.lastRes,k));
+
+            }*/
+
         }
-
-
         List<Color> colors = List.of(Color.MAGENTA, Color.ORANGE, Color.RED, Color.BLUE, Color.GREEN);
 
-        for (int i=0; i<totalSegmentCountToFit;i++) {
+        for (int i = 0; i< TOTAL_SEGMENT_COUNT_TO_FIT; i++) {
             plotPolynomial(bestSegments.get(0).samples().stream().mapToDouble(s->s.getX()).toArray(), bestFitResult.get(i), plot, 2+i, "p"+String.valueOf(i), colors.get(i), bestSegments.get(i).startTime(), bestSegments.get(i).endTime());
         }
 
     }
+
+
+    public static List<Double> generateRandomIntersectionTimes(double min, double max, int n) {
+        Random rand = new Random();
+        List<Double> cuts = new ArrayList<>();
+        cuts.add(min);
+        for (int i = 1; i < n; i++) {
+            cuts.add(min + rand.nextDouble() * (max-min));
+        }
+        cuts.add(max);
+
+
+        return cuts.stream().sorted().toList();
+    }
+
 
     private SegmentSampleData getSegmentSampleData(PartitionedSample s) {
         List<WeightedObservedPoint> samples = new ArrayList<>();
         for (int i = 0; i < s.points().size(); i++) {
             samples.add(new WeightedObservedPoint(1.0, s.points().get(i).getX(), s.points().get(i).getY()));
         }
-        return new SegmentSampleData(s.startTime(), s.endTime(), samples, 30, 10);
+        return new SegmentSampleData(s.startTime(), s.endTime(), samples, CONTINUITY_WEIGHT, DERIVATIVE_CONTINUITY_WEIGHT);
 
     }
 

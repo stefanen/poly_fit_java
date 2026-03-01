@@ -154,7 +154,7 @@ public class PolyFitter {
 
 
                 result = List.of(p1, p2, p3);
-                if (CustomPolyFitter.best<0.73) {
+                if (CustomPolyFitter.lastRes <0.73) {
                     break;
                 }
             }

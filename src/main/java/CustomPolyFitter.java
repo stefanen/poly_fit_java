@@ -23,7 +23,7 @@ public class CustomPolyFitter {
     private RealMatrix A;
     private RealVector b;
     private double[] weights;
-    public static double best=1000.0;
+    public static double lastRes =1000.0;
 
     public CustomPolyFitter(PolyfitDto polyfitDto) {
         this.polyfitDto = polyfitDto;
@@ -89,10 +89,9 @@ public class CustomPolyFitter {
         List<Double> allCoeffs = Arrays.stream(optimizeResult.getPoint().toArray()).boxed().toList();
 
         var res = optimizeResult.getRMS();
-        if (res <best) {
-            System.out.println("new record"+optimizeResult.getRMS());
-            best=res;
-        }
+
+        lastRes =res;
+
         return IntStream.range(0, allCoeffs.size() / coeffCount)
                 .mapToObj(i -> (List<Double>) new ArrayList<>(allCoeffs.subList(coeffCount * i, coeffCount * (i + 1))))
                 .toList();
