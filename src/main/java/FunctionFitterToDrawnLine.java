@@ -8,9 +8,13 @@ import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.title.LegendTitle;
 import org.jfree.data.xy.XYDataItem;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
+import org.jfree.ui.HorizontalAlignment;
+import org.jfree.ui.RectangleEdge;
+import org.jfree.ui.VerticalAlignment;
 
 import javax.swing.*;
 import java.awt.*;
@@ -36,6 +40,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
     private final XYSeries sampleSeries;
     private final List<Point2D.Double> drawnPoints = new ArrayList<>();
     private final XYPlot plot;
+    private final ChartPanel chartPanel;
     private ScheduledFuture<?> calculationFuture;
 
     public FunctionFitterToDrawnLine() {
@@ -55,6 +60,9 @@ public class FunctionFitterToDrawnLine extends JFrame {
                 true,
                 false
         );
+        LegendTitle legend = chart.getLegend();
+        legend.setPosition(RectangleEdge.RIGHT);
+        legend.setItemFont(new Font("SansSerif", Font.PLAIN, 12));
 
 
         plot = chart.getXYPlot();
@@ -62,7 +70,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
         plot.setRenderer(renderer);
         plot.getDomainAxis().setRange(0.0, 10.0);   // X axis
         plot.getRangeAxis().setRange(-10.0, 10.0);
-        ChartPanel chartPanel = new ChartPanel(chart);
+        chartPanel = new ChartPanel(chart);
         chartPanel.setMouseZoomable(false); // disable zoom
 
         chartPanel.addMouseMotionListener(new MouseAdapter() {
@@ -80,7 +88,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
             }
         });
         setContentPane(chartPanel);
-        setSize(800, 600);
+        setSize(1200, 800);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
     }
@@ -173,8 +181,10 @@ public class FunctionFitterToDrawnLine extends JFrame {
         List<Color> colors = List.of(Color.MAGENTA, Color.ORANGE, Color.RED, Color.BLUE, Color.GREEN);
 
         for (int i = 0; i< TOTAL_SEGMENT_COUNT_TO_FIT; i++) {
-            plotPolynomial(bestSegments.get(0).samples().stream().mapToDouble(s->s.getX()).toArray(), bestFitResult.get(i), plot, 2+i, "p"+String.valueOf(i), colors.get(i), bestSegments.get(i).startTime(), bestSegments.get(i).endTime());
+            plotPolynomial(bestSegments.get(0).samples().stream().mapToDouble(s->s.getX()).toArray(), bestFitResult.get(i), plot, 2+i, "p"+String.valueOf(i)+ " : " +  bestFitResult.get(i).toString().replaceAll("([.][0-9]{3})[0-9]* ","$1 "), colors.get(i), bestSegments.get(i).startTime(), bestSegments.get(i).endTime());
         }
+
+        chartPanel.setMouseZoomable(false);
 
     }
 
