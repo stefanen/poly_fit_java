@@ -41,6 +41,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
     private final List<Point2D.Double> drawnPoints = new ArrayList<>();
     private final XYPlot plot;
     private final ChartPanel chartPanel;
+    private final JFreeChart chart;
     private ScheduledFuture<?> calculationFuture;
 
     public FunctionFitterToDrawnLine() {
@@ -50,7 +51,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
 
         XYSeriesCollection dataset = new XYSeriesCollection(sampleSeries);
 
-        JFreeChart chart = ChartFactory.createXYLineChart(
+        chart = ChartFactory.createXYLineChart(
                 "Polyfit where segment-interval-times are variables",
                 "X",
                 "Y",
@@ -185,7 +186,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
         }
 
         chartPanel.setMouseZoomable(false);
-
+        chart.setTitle(String.format("Showing best poly-fit to drawn sample-data, using degree=%d and segmentCount=%d", DEGREE_TOFIT, TOTAL_SEGMENT_COUNT_TO_FIT));
     }
 
 
