@@ -40,6 +40,10 @@ public class FunctionFitterToDrawnLine extends JFrame {
     public int degreeTofit = 3;
     public int totalSegmentCountToFit = 4;
     public int segmentIntervalSearchSpaceSize = 3000;
+
+
+    Point2D.Double lastSmooth = null;
+    double alpha = 0.25; //how much to smoothen out user input mouse dragging.
     private final XYSeries sampleSeries;
     private final List<Point2D.Double> drawnPoints = new ArrayList<>();
     private final XYPlot plot;
@@ -93,6 +97,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
                 }
                 sampleSeries.clear();
                 drawnPoints.clear();
+                lastSmooth= null;
                 addPointFromMouse(e, chartPanel, plot);
             }
         });
@@ -176,9 +181,6 @@ public class FunctionFitterToDrawnLine extends JFrame {
         calculate();
     }
 
-
-    Point2D.Double lastSmooth = null;
-    double alpha = 0.25;
     private void addPointFromMouse(MouseEvent e, ChartPanel chartPanel, XYPlot plot) {
         if (isReadOnlyMode) {
             return;
