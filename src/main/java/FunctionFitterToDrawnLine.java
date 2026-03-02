@@ -30,11 +30,16 @@ import java.util.concurrent.TimeUnit;
 
 public class FunctionFitterToDrawnLine extends JFrame {
 
+    private final JTextField searchDepthInput;
+    private final JTextField derivContinuityInput;
+    private final JTextField continuityInput;
+    private final JTextField degreeInput;
+    private final JTextField segmentCountInput;
     public int continuityWeight = 30;
     public int derivativeContinuityWeight = 10;
     public int degreeTofit = 3;
     public int totalSegmentCountToFit = 4;
-    public static final int SEGMENT_INTERVAL_SEARCH_SPACE_SIZE = 3000;
+    public int segmentIntervalSearchSpaceSize = 3000;
     private final XYSeries sampleSeries;
     private final List<Point2D.Double> drawnPoints = new ArrayList<>();
     private final XYPlot plot;
@@ -69,7 +74,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
         plot = chart.getXYPlot();
         XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(true, false);
         plot.setRenderer(renderer);
-        plot.getDomainAxis().setRange(0.0, 10.0);   // X axis
+        plot.getDomainAxis().setRange(0.0, 10.0);   // X axisl
         plot.getRangeAxis().setRange(-10.0, 10.0);
         chartPanel = new ChartPanel(chart);
         chartPanel.setMouseZoomable(isReadOnlyMode); // disable zoom
@@ -95,52 +100,61 @@ public class FunctionFitterToDrawnLine extends JFrame {
         JPanel root = new JPanel(new BorderLayout());
 
         JPanel topPanel = new JPanel();
-        topPanel.add(new JLabel("Number of segments (1-5):"));
-        JTextField segmentCountInput = new JTextField(2);
+        topPanel.add(new JLabel("#Segments to fit (1-9):"));
+        segmentCountInput = new JTextField(2);
         segmentCountInput.setText("4");
         segmentCountInput.addActionListener(e -> {
-            String text = segmentCountInput.getText();
-            this.totalSegmentCountToFit=Integer.parseInt(text);
             recalculatePlot();
         });
         topPanel.add(segmentCountInput);
 
-        topPanel.add(new JLabel("Degree to fit (1-9)"));
-        JTextField degreeInput = new JTextField(2);
+        topPanel.add(new JLabel("Degree to fit"));
+        degreeInput = new JTextField(2);
         degreeInput.setText("3");
         degreeInput.addActionListener(e -> {
-            String text = degreeInput.getText();
-            this.degreeTofit=Integer.parseInt(text);
             recalculatePlot();
         });
         topPanel.add(degreeInput);
 
-        topPanel.add(new JLabel("Continuity Weight (0-N)"));
-        JTextField continuityInput = new JTextField(2);
+        topPanel.add(new JLabel("Continuity Weight"));
+        continuityInput = new JTextField(4);
         continuityInput.setText("30");
         continuityInput.addActionListener(e -> {
-            String text = degreeInput.getText();
-            this.continuityWeight=Integer.parseInt(text);
             recalculatePlot();
         });
         topPanel.add(continuityInput);
 
-        topPanel.add(new JLabel("Derivative Continuity Weight (0-N)"));
-        JTextField derivContinuityInput = new JTextField(2);
+        topPanel.add(new JLabel("Derivative Continuity Weight"));
+        derivContinuityInput = new JTextField(4);
         derivContinuityInput.setText("10");
         derivContinuityInput.addActionListener(e -> {
-            String text = degreeInput.getText();
-            this.derivativeContinuityWeight=Integer.parseInt(text);
             recalculatePlot();
         });
         topPanel.add(derivContinuityInput);
 
-        JButton zoomToggle = new JButton("Toggle edit mode");
+        topPanel.add(new JLabel("Fitting search depth"));
+        searchDepthInput = new JTextField(7);
+        searchDepthInput.setText("3000");
+        searchDepthInput.addActionListener(e -> {
+            recalculatePlot();
+        });
+        topPanel.add(searchDepthInput);
+
+        JButton zoomToggle = new JButton("Toggle drawing mode");
         zoomToggle.addActionListener(e -> {
             isReadOnlyMode=!isReadOnlyMode;
             chartPanel.setMouseZoomable(isReadOnlyMode);
         });
         topPanel.add(zoomToggle);
+
+        JButton restartButton = new JButton("Restart");
+        topPanel.add(restartButton);
+        restartButton.addActionListener(e -> {
+            dispose();
+            SwingUtilities.invokeLater(() -> {
+                new FunctionFitterToDrawnLine().setVisible(true);
+            });
+        });
 
         root.add(topPanel, BorderLayout.NORTH);
         root.add(chartPanel, BorderLayout.CENTER);
@@ -151,12 +165,20 @@ public class FunctionFitterToDrawnLine extends JFrame {
     }
 
     private void recalculatePlot() {
+        this.derivativeContinuityWeight=Integer.parseInt(derivContinuityInput.getText());
+        this.continuityWeight=Integer.parseInt(continuityInput.getText());
+        this.degreeTofit=Integer.parseInt(degreeInput.getText());
+        this.segmentIntervalSearchSpaceSize=Integer.parseInt(searchDepthInput.getText());
+        this.totalSegmentCountToFit=Integer.parseInt(segmentCountInput.getText());
         for (int i = plot.getDatasetCount() - 1; i >= 1; i--) {
             plot.setDataset(i, null);
         }
         calculate();
     }
 
+
+    Point2D.Double lastSmooth = null;
+    double alpha = 0.25;
     private void addPointFromMouse(MouseEvent e, ChartPanel chartPanel, XYPlot plot) {
         if (isReadOnlyMode) {
             return;
@@ -171,9 +193,22 @@ public class FunctionFitterToDrawnLine extends JFrame {
         double y = yAxis.java2DToValue(
                 e.getY(), dataArea, plot.getRangeAxisEdge());
 
-        Point2D.Double point = new Point2D.Double(x, y);
-        drawnPoints.add(point);
+
+        Point2D.Double raw = new Point2D.Double(x, y);
+
+        if (lastSmooth == null) {
+            lastSmooth = raw;
+        } else {
+            x = alpha * raw.x + (1 - alpha) * lastSmooth.x;
+            y = alpha * raw.y + (1 - alpha) * lastSmooth.y;
+            lastSmooth = new Point2D.Double(x, y);
+        }
+
+        drawnPoints.add(raw);
+
         sampleSeries.add(x, y);
+
+
 
         ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
         if (calculationFuture != null) {
@@ -184,6 +219,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
                 scheduledExecutorService.schedule(this::calculate, 200L, TimeUnit.MILLISECONDS);
 
     }
+
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
@@ -212,8 +248,8 @@ public class FunctionFitterToDrawnLine extends JFrame {
         double globalEndTime = sampleSeries.getMaxX();
         List<PolynomialFunction> bestFitResult=List.of();
         List<SegmentSampleData> bestSegments=List.of();
-        double bestFitScore = 10000.0;
-        for (int k = 0; k< SEGMENT_INTERVAL_SEARCH_SPACE_SIZE; k++){
+        double bestFitScore = 1000000.0;
+        for (int k = 0; k< segmentIntervalSearchSpaceSize; k++){
 
             var intersectionTimes = generateRandomIntersectionTimes(globalStartTime,globalEndTime, totalSegmentCountToFit);
 
@@ -245,10 +281,10 @@ public class FunctionFitterToDrawnLine extends JFrame {
             }*/
 
         }
-        List<Color> colors = List.of(Color.MAGENTA, Color.ORANGE, Color.RED, Color.BLUE, Color.GREEN);
+        List<Color> colors = List.of(Color.MAGENTA, Color.ORANGE, Color.RED, Color.BLUE, Color.GREEN, Color.WHITE, Color.DARK_GRAY, Color.CYAN, Color.PINK, Color.YELLOW);
 
         for (int i = 0; i< totalSegmentCountToFit; i++) {
-            plotPolynomial(bestSegments.get(0).samples().stream().mapToDouble(s->s.getX()).toArray(), bestFitResult.get(i), plot, 2+i, "p"+String.valueOf(i)+ " : " +  bestFitResult.get(i).toString().replaceAll("([.][0-9]{3})[0-9]* ","$1 "), colors.get(i), bestSegments.get(i).startTime(), bestSegments.get(i).endTime());
+            plotPolynomial(bestSegments.get(0).samples().stream().mapToDouble(s->s.getX()).toArray(), bestFitResult.get(i), plot, 2+i, "p"+String.valueOf(i)+ " : " +  bestFitResult.get(i).toString().replaceAll("([.][0-9]{3})[0-9]*","$1 "), colors.get(i), bestSegments.get(i).startTime(), bestSegments.get(i).endTime());
         }
 
         chart.setTitle(String.format("Showing best poly-fit to drawn sample-data, using degree=%d and segmentCount=%d", degreeTofit, totalSegmentCountToFit));
