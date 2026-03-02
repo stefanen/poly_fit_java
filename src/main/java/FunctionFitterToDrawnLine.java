@@ -83,6 +83,9 @@ public class FunctionFitterToDrawnLine extends JFrame {
         chartPanel.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
+                if (isReadOnlyMode) {
+                    return;
+                }
                 sampleSeries.clear();
                 drawnPoints.clear();
                 addPointFromMouse(e, chartPanel, plot);
@@ -132,7 +135,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
         });
         topPanel.add(derivContinuityInput);
 
-        JButton zoomToggle = new JButton("toggle zoom");
+        JButton zoomToggle = new JButton("Toggle edit mode");
         zoomToggle.addActionListener(e -> {
             isReadOnlyMode=!isReadOnlyMode;
             chartPanel.setMouseZoomable(isReadOnlyMode);
