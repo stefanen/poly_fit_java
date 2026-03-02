@@ -12,9 +12,7 @@ import org.jfree.chart.title.LegendTitle;
 import org.jfree.data.xy.XYDataItem;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
-import org.jfree.ui.HorizontalAlignment;
 import org.jfree.ui.RectangleEdge;
-import org.jfree.ui.VerticalAlignment;
 
 import javax.swing.*;
 import java.awt.*;
@@ -32,10 +30,10 @@ import java.util.concurrent.TimeUnit;
 
 public class FunctionFitterToDrawnLine extends JFrame {
 
-    public static final int CONTINUITY_WEIGHT = 30;
-    public static final int DERIVATIVE_CONTINUITY_WEIGHT = 10;
-    public static final int DEGREE_TOFIT = 3;
-    public static final int TOTAL_SEGMENT_COUNT_TO_FIT = 4;
+    public int continuityWeight = 30;
+    public int derivativeContinuityWeight = 10;
+    public int degreeTofit = 3;
+    public int totalSegmentCountToFit = 4;
     public static final int SEGMENT_INTERVAL_SEARCH_SPACE_SIZE = 3000;
     private final XYSeries sampleSeries;
     private final List<Point2D.Double> drawnPoints = new ArrayList<>();
@@ -43,6 +41,8 @@ public class FunctionFitterToDrawnLine extends JFrame {
     private final ChartPanel chartPanel;
     private final JFreeChart chart;
     private ScheduledFuture<?> calculationFuture;
+
+    private boolean isReadOnlyMode=false;
 
     public FunctionFitterToDrawnLine() {
         super("Drag to Draw Points");
@@ -72,7 +72,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
         plot.getDomainAxis().setRange(0.0, 10.0);   // X axis
         plot.getRangeAxis().setRange(-10.0, 10.0);
         chartPanel = new ChartPanel(chart);
-        chartPanel.setMouseZoomable(false); // disable zoom
+        chartPanel.setMouseZoomable(isReadOnlyMode); // disable zoom
 
         chartPanel.addMouseMotionListener(new MouseAdapter() {
             @Override
@@ -88,13 +88,76 @@ public class FunctionFitterToDrawnLine extends JFrame {
                 addPointFromMouse(e, chartPanel, plot);
             }
         });
-        setContentPane(chartPanel);
+
+        JPanel root = new JPanel(new BorderLayout());
+
+        JPanel topPanel = new JPanel();
+        topPanel.add(new JLabel("Number of segments (1-5):"));
+        JTextField segmentCountInput = new JTextField(2);
+        segmentCountInput.setText("4");
+        segmentCountInput.addActionListener(e -> {
+            String text = segmentCountInput.getText();
+            this.totalSegmentCountToFit=Integer.parseInt(text);
+            recalculatePlot();
+        });
+        topPanel.add(segmentCountInput);
+
+        topPanel.add(new JLabel("Degree to fit (1-9)"));
+        JTextField degreeInput = new JTextField(2);
+        degreeInput.setText("3");
+        degreeInput.addActionListener(e -> {
+            String text = degreeInput.getText();
+            this.degreeTofit=Integer.parseInt(text);
+            recalculatePlot();
+        });
+        topPanel.add(degreeInput);
+
+        topPanel.add(new JLabel("Continuity Weight (0-N)"));
+        JTextField continuityInput = new JTextField(2);
+        continuityInput.setText("30");
+        continuityInput.addActionListener(e -> {
+            String text = degreeInput.getText();
+            this.continuityWeight=Integer.parseInt(text);
+            recalculatePlot();
+        });
+        topPanel.add(continuityInput);
+
+        topPanel.add(new JLabel("Derivative Continuity Weight (0-N)"));
+        JTextField derivContinuityInput = new JTextField(2);
+        derivContinuityInput.setText("10");
+        derivContinuityInput.addActionListener(e -> {
+            String text = degreeInput.getText();
+            this.derivativeContinuityWeight=Integer.parseInt(text);
+            recalculatePlot();
+        });
+        topPanel.add(derivContinuityInput);
+
+        JButton zoomToggle = new JButton("toggle zoom");
+        zoomToggle.addActionListener(e -> {
+            isReadOnlyMode=!isReadOnlyMode;
+            chartPanel.setMouseZoomable(isReadOnlyMode);
+        });
+        topPanel.add(zoomToggle);
+
+        root.add(topPanel, BorderLayout.NORTH);
+        root.add(chartPanel, BorderLayout.CENTER);
+        setContentPane(root);
         setSize(1200, 800);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
     }
 
+    private void recalculatePlot() {
+        for (int i = plot.getDatasetCount() - 1; i >= 1; i--) {
+            plot.setDataset(i, null);
+        }
+        calculate();
+    }
+
     private void addPointFromMouse(MouseEvent e, ChartPanel chartPanel, XYPlot plot) {
+        if (isReadOnlyMode) {
+            return;
+        }
         Rectangle2D dataArea = chartPanel.getScreenDataArea();
 
         ValueAxis xAxis = plot.getDomainAxis();
@@ -141,7 +204,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
     }
 
     private void calculate() {
-        System.out.println(String.format("calculating best polyfit of degree %d using %d segments", DEGREE_TOFIT, TOTAL_SEGMENT_COUNT_TO_FIT));
+        System.out.println(String.format("calculating best polyfit of degree %d using %d segments", degreeTofit, totalSegmentCountToFit));
         double globalStartTime = sampleSeries.getMinX();
         double globalEndTime = sampleSeries.getMaxX();
         List<PolynomialFunction> bestFitResult=List.of();
@@ -149,20 +212,20 @@ public class FunctionFitterToDrawnLine extends JFrame {
         double bestFitScore = 10000.0;
         for (int k = 0; k< SEGMENT_INTERVAL_SEARCH_SPACE_SIZE; k++){
 
-            var intersectionTimes = generateRandomIntersectionTimes(globalStartTime,globalEndTime, TOTAL_SEGMENT_COUNT_TO_FIT);
+            var intersectionTimes = generateRandomIntersectionTimes(globalStartTime,globalEndTime, totalSegmentCountToFit);
 
             List<SegmentSampleData> segments = new ArrayList<>();
-            for (int i = 0; i< TOTAL_SEGMENT_COUNT_TO_FIT; i++) {
+            for (int i = 0; i< totalSegmentCountToFit; i++) {
                 var p = getPartition(intersectionTimes.get(i),intersectionTimes.get(i+1),sampleSeries);
                 SegmentSampleData segment = getSegmentSampleData(p);
                 segments.add(segment);
             }
-            PolyfitDto dto = new PolyfitDto(segments, DEGREE_TOFIT);
+            PolyfitDto dto = new PolyfitDto(segments, degreeTofit);
             CustomPolyFitter customPolyFitter = new CustomPolyFitter(dto);
             List<List<Double>> coeffs = customPolyFitter.calculateOptimalCoeffs();
 
             List<PolynomialFunction> result = new ArrayList<>();
-            for (int i = 0; i< TOTAL_SEGMENT_COUNT_TO_FIT; i++) {
+            for (int i = 0; i< totalSegmentCountToFit; i++) {
                 PolynomialFunction polynomial = new PolynomialFunction(coeffs.get(i).stream().mapToDouble(Double::doubleValue).toArray());
                 result.add(polynomial);
             }
@@ -181,12 +244,11 @@ public class FunctionFitterToDrawnLine extends JFrame {
         }
         List<Color> colors = List.of(Color.MAGENTA, Color.ORANGE, Color.RED, Color.BLUE, Color.GREEN);
 
-        for (int i = 0; i< TOTAL_SEGMENT_COUNT_TO_FIT; i++) {
+        for (int i = 0; i< totalSegmentCountToFit; i++) {
             plotPolynomial(bestSegments.get(0).samples().stream().mapToDouble(s->s.getX()).toArray(), bestFitResult.get(i), plot, 2+i, "p"+String.valueOf(i)+ " : " +  bestFitResult.get(i).toString().replaceAll("([.][0-9]{3})[0-9]* ","$1 "), colors.get(i), bestSegments.get(i).startTime(), bestSegments.get(i).endTime());
         }
 
-        chartPanel.setMouseZoomable(false);
-        chart.setTitle(String.format("Showing best poly-fit to drawn sample-data, using degree=%d and segmentCount=%d", DEGREE_TOFIT, TOTAL_SEGMENT_COUNT_TO_FIT));
+        chart.setTitle(String.format("Showing best poly-fit to drawn sample-data, using degree=%d and segmentCount=%d", degreeTofit, totalSegmentCountToFit));
     }
 
 
@@ -209,7 +271,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
         for (int i = 0; i < s.points().size(); i++) {
             samples.add(new WeightedObservedPoint(1.0, s.points().get(i).getX(), s.points().get(i).getY()));
         }
-        return new SegmentSampleData(s.startTime(), s.endTime(), samples, CONTINUITY_WEIGHT, DERIVATIVE_CONTINUITY_WEIGHT);
+        return new SegmentSampleData(s.startTime(), s.endTime(), samples, continuityWeight, derivativeContinuityWeight);
 
     }
 
