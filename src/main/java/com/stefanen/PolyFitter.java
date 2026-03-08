@@ -1,3 +1,5 @@
+package com.stefanen;
+
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math3.fitting.WeightedObservedPoint;
 import org.apache.commons.math3.util.Pair;
@@ -41,8 +43,8 @@ public class PolyFitter {
             plotSamplePoints(plot, p2_x, p2_y, 2, Color.BLUE);
         }
         /*
-        PolynomialFunction p1Polynomial = PolyFitterUtil.fitSamplesDefault(p1_x, p1_y, DEGREE_TO_FIT);
-        PolynomialFunction p2Polynomial = PolyFitterUtil.fitSamplesDefault(p2_x, p2_y, DEGREE_TO_FIT);
+        PolynomialFunction p1Polynomial = com.stefanen.PolyFitterUtil.fitSamplesDefault(p1_x, p1_y, DEGREE_TO_FIT);
+        PolynomialFunction p2Polynomial = com.stefanen.PolyFitterUtil.fitSamplesDefault(p2_x, p2_y, DEGREE_TO_FIT);
         */
 
 
@@ -102,11 +104,11 @@ public class PolyFitter {
 
 
 /*
-            PolyFitterUtil.SegmentSampleData s1 = new PolyFitterUtil.SegmentSampleData(p1xSamples, p1ySamples, s1start, s1end);
-            PolyFitterUtil.SegmentSampleData s2 = new PolyFitterUtil.SegmentSampleData(p2xSamples, p2ySamples, s1end, s2end);
-            PolyFitterUtil.SegmentSampleData s3 = new PolyFitterUtil.SegmentSampleData(p3xSamples, p3ySamples, s2end, s3end);
+            com.stefanen.PolyFitterUtil.com.stefanen.SegmentSampleData s1 = new com.stefanen.PolyFitterUtil.com.stefanen.SegmentSampleData(p1xSamples, p1ySamples, s1start, s1end);
+            com.stefanen.PolyFitterUtil.com.stefanen.SegmentSampleData s2 = new com.stefanen.PolyFitterUtil.com.stefanen.SegmentSampleData(p2xSamples, p2ySamples, s1end, s2end);
+            com.stefanen.PolyFitterUtil.com.stefanen.SegmentSampleData s3 = new com.stefanen.PolyFitterUtil.com.stefanen.SegmentSampleData(p3xSamples, p3ySamples, s2end, s3end);
 
-            //SegmentSampleData s2 = new SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1]), p2xSamples[p2xSamples.length-1]));
+            //com.stefanen.SegmentSampleData s2 = new com.stefanen.SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1]), p2xSamples[p2xSamples.length-1]));
             List<List<Double>> coeffs2 = polyfitMultiple(List.of(s1), degree + 1, cWeight, dWeight);
             System.out.println(coeffs2);
 

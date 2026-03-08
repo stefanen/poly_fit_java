@@ -1,3 +1,5 @@
+package com.stefanen;
+
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math3.fitting.WeightedObservedPoint;
 import org.jfree.chart.ChartFactory;
@@ -211,7 +213,6 @@ public class FunctionFitterToDrawnLine extends JFrame {
         sampleSeries.add(x, y);
 
 
-
         ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
         if (calculationFuture != null) {
             calculationFuture.cancel(false);
@@ -278,7 +279,7 @@ public class FunctionFitterToDrawnLine extends JFrame {
             }
             /*
             if (k%100==0) {
-                System.out.println(String.format("segmentation at: %s , fit-value= %f, after %d tries", intersectionTimes,CustomPolyFitter.lastRes,k));
+                System.out.println(String.format("segmentation at: %s , fit-value= %f, after %d tries", intersectionTimes,com.stefanen.CustomPolyFitter.lastRes,k));
 
             }*/
 

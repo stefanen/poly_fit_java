@@ -1,3 +1,6 @@
+import com.stefanen.CustomPolyFitter;
+import com.stefanen.PolyfitDto;
+import com.stefanen.SegmentSampleData;
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math3.fitting.WeightedObservedPoint;
 import org.junit.jupiter.api.Assertions;

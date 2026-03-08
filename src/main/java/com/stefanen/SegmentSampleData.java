@@ -1,3 +1,5 @@
+package com.stefanen;
+
 import org.apache.commons.math3.fitting.WeightedObservedPoint;
 
 import java.util.List;

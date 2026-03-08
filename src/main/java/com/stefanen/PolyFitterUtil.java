@@ -1,3 +1,5 @@
+package com.stefanen;
+
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math3.fitting.PolynomialCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoints;
@@ -219,7 +221,7 @@ public class PolyFitterUtil {
         SegmentSampleData s1 = new SegmentSampleData(p1xSamples, p1ySamples, s1start, s1end);
         SegmentSampleData s2 = new SegmentSampleData(p2xSamples, p2ySamples, s1end, s2end);
 
-        //SegmentSampleData s2 = new SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1]), p2xSamples[p2xSamples.length-1]));
+        //com.stefanen.SegmentSampleData s2 = new com.stefanen.SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1]), p2xSamples[p2xSamples.length-1]));
 
         List<List<Double>> coeffs = polyfitMultiple(List.of(s1, s2), degree + 1, cWeight, dWeight);
         PolynomialFunction p1 = new PolynomialFunction(coeffs.get(0).stream().mapToDouble(Double::doubleValue).toArray());
@@ -236,7 +238,7 @@ public class PolyFitterUtil {
         SegmentSampleData s2 = new SegmentSampleData(p2xSamples, p2ySamples, s1end, s2end);
         SegmentSampleData s3 = new SegmentSampleData(p3xSamples, p3ySamples, s2end, s3end);
 
-        //SegmentSampleData s2 = new SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1]), p2xSamples[p2xSamples.length-1]));
+        //com.stefanen.SegmentSampleData s2 = new com.stefanen.SegmentSampleData(p2xSamples,p2ySamples,p1xSamples[p1xSamples.length-1]), p2xSamples[p2xSamples.length-1]));
         List<List<Double>> coeffs2 = polyfitMultiple(List.of(s1), degree + 1, cWeight, dWeight);
         System.out.println(coeffs2);
 
