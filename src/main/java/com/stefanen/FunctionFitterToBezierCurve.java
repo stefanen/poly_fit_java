@@ -29,6 +29,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class FunctionFitterToBezierCurve extends JFrame {
 
@@ -43,7 +44,7 @@ public class FunctionFitterToBezierCurve extends JFrame {
     public int derivativeContinuityWeight = 10;
     public int degreeTofit = 3;
     public int totalSegmentCountToFit = 4;
-    public int segmentIntervalSearchSpaceSize = 3000;
+    public int segmentIntervalSearchSpaceSize = 200;
 
     private int selectedBezierPointIndex = -1;
 
@@ -134,7 +135,7 @@ public class FunctionFitterToBezierCurve extends JFrame {
 
         topPanel.add(new JLabel("Fitting search depth"));
         searchDepthInput = new JTextField(7);
-        searchDepthInput.setText("3000");
+        searchDepthInput.setText("200");
         searchDepthInput.addActionListener(e -> {
             recalculatePlot();
         });
@@ -280,9 +281,13 @@ public class FunctionFitterToBezierCurve extends JFrame {
         List<PolynomialFunction> bestFitResult=List.of();
         List<SegmentSampleData> bestSegments=List.of();
         double bestFitScore = 1000000.0;
+        List<Double> intersectionTimes = new ArrayList<>();
+        List<Double> bestIntersectionTimes = new ArrayList<>();
+
+        //get a sensible starting point for intersectionTimes by random cuts
         for (int k = 0; k< segmentIntervalSearchSpaceSize; k++){
 
-            var intersectionTimes = generateRandomIntersectionTimes(globalStartTime,globalEndTime, totalSegmentCountToFit);
+            intersectionTimes = generateRandomIntersectionTimes(globalStartTime,globalEndTime, totalSegmentCountToFit);
 
             List<SegmentSampleData> segments = new ArrayList<>();
             for (int i = 0; i< totalSegmentCountToFit; i++) {
@@ -304,15 +309,59 @@ public class FunctionFitterToBezierCurve extends JFrame {
                 System.out.println(String.format("New best segmentation at: %s , fit-value= %f, after %d tries", intersectionTimes,bestFitScore,k));
                 bestSegments=segments;
                 bestFitResult=result;
+                bestIntersectionTimes=intersectionTimes;
             }
-            /*
-            if (k%100==0) {
-                System.out.println(String.format("segmentation at: %s , fit-value= %f, after %d tries", intersectionTimes,com.stefanen.CustomPolyFitter.lastRes,k));
-
-            }*/
-
         }
-        List<Color> colors = List.of(Color.MAGENTA, Color.ORANGE, Color.RED, Color.BLUE, Color.GREEN, Color.WHITE, Color.DARK_GRAY, Color.CYAN, Color.PINK, Color.YELLOW);
+
+        intersectionTimes = bestIntersectionTimes;
+
+        boolean goLeft=true;
+        for (int j=1; j<intersectionTimes.size()-1; j++) {
+            for (int k = 0; k < 1000; k++) {
+                var old = intersectionTimes.get(j);
+                double step=0.01;
+                if (goLeft) {
+                    if (intersectionTimes.get(j-1) < (old-step)) {
+                        intersectionTimes.set(j, old - step);
+                    }
+                } else {
+                    if (intersectionTimes.get(j+1) > (old+step)) {
+                        intersectionTimes.set(j, old + step);
+                    }
+                }
+                List<SegmentSampleData> segments = new ArrayList<>();
+                for (int i = 0; i < totalSegmentCountToFit; i++) {
+                    var p = getPartition(intersectionTimes.get(i), intersectionTimes.get(i + 1), sampleSeries);
+                    SegmentSampleData segment = getSegmentSampleData(p);
+                    segments.add(segment);
+                }
+                PolyfitDto dto = new PolyfitDto(segments, degreeTofit);
+                CustomPolyFitter customPolyFitter = new CustomPolyFitter(dto);
+                List<List<Double>> coeffs = customPolyFitter.calculateOptimalCoeffs();
+
+                List<PolynomialFunction> result = new ArrayList<>();
+                for (int i = 0; i < totalSegmentCountToFit; i++) {
+                    PolynomialFunction polynomial = new PolynomialFunction(coeffs.get(i).stream().mapToDouble(Double::doubleValue).toArray());
+                    result.add(polynomial);
+                }
+                //System.out.println("Trying:"+intersectionTimes + ":"+CustomPolyFitter.lastRes);
+                if (CustomPolyFitter.lastRes < bestFitScore) {
+                    bestFitScore = CustomPolyFitter.lastRes;
+                    System.out.println(String.format("New best resegmentation at: %s , fit-value= %f, after %d tries", intersectionTimes, bestFitScore, k));
+                    bestSegments = segments;
+                    bestFitResult = result;
+                } else {
+                    if (k>2) {
+                        break;
+                    }
+                    intersectionTimes.set(j, old);
+                    goLeft = !goLeft;
+                }
+
+            }
+        }
+
+            List<Color> colors = List.of(Color.MAGENTA, Color.ORANGE, Color.RED, Color.BLUE, Color.GREEN, Color.WHITE, Color.DARK_GRAY, Color.CYAN, Color.PINK, Color.YELLOW);
 
         for (int i = 0; i< totalSegmentCountToFit; i++) {
             plotPolynomial(bestSegments.get(0).samples().stream().mapToDouble(s->s.getX()).toArray(), bestFitResult.get(i), plot, 2+i, "p"+String.valueOf(i)+ " : " +  bestFitResult.get(i).toString().replaceAll("([.][0-9]{3})[0-9]*","$1 "), colors.get(i), bestSegments.get(i).startTime(), bestSegments.get(i).endTime());
@@ -408,7 +457,7 @@ public class FunctionFitterToBezierCurve extends JFrame {
         cuts.add(max);
 
 
-        return cuts.stream().sorted().toList();
+        return cuts.stream().sorted().collect(Collectors.toList());
     }
 
 
