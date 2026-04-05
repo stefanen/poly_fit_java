@@ -76,7 +76,7 @@ public class PolyFitterUtil {
         double[] weights = new double[m];
         for (int i = 0; i < m; i++) {
             if (i < totalNumberOfSampleDataRows) {
-                weights[i] = 1.0; //could give weights to samples as input if we wanted
+                weights[i] = 1.0; //could give weights to segments as input if we wanted
             } else if (i < totalNumberOfSampleDataRows + numberOfJunctions) {
                 weights[i] = continuityWeight;
             } else {
@@ -143,7 +143,7 @@ public class PolyFitterUtil {
 
 
 
-    /* fit polynomial p to xSamples-ySamples samples, but also to the derivative having a target value at supplied point p'(x0)=y0  */
+    /* fit polynomial p to xSamples-ySamples segments, but also to the derivative having a target value at supplied point p'(x0)=y0  */
     public static double[] fit(double[] x, double[] y, int degree, double x0, double y0, double continuityWeight, double derivContinuityWeight) {
         int nData = x.length;
         int nParams = degree + 1;

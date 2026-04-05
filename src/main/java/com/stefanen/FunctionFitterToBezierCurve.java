@@ -53,7 +53,7 @@ public class FunctionFitterToBezierCurve extends JFrame {
     private final ChartPanel chartPanel;
     private final JFreeChart chart;
     private ScheduledFuture<?> calculationFuture;
-    private boolean isReadOnlyMode=false;
+    private boolean isReadOnlyMode = false;
 
     public FunctionFitterToBezierCurve() {
         super("Bezier-curve to polyfunction");
@@ -80,8 +80,8 @@ public class FunctionFitterToBezierCurve extends JFrame {
         plot = chart.getXYPlot();
         XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(true, false);
         plot.setRenderer(renderer);
-        plot.getDomainAxis().setRange(0.0, 10.0);
-        plot.getRangeAxis().setRange(-10.0, 10.0);
+        plot.getDomainAxis().setRange(0.0, 20.0);
+        plot.getRangeAxis().setRange(-20.0, 20.0);
         chartPanel = new ChartPanel(chart);
         chartPanel.setMouseZoomable(isReadOnlyMode); // disable zoom
 
@@ -143,7 +143,7 @@ public class FunctionFitterToBezierCurve extends JFrame {
 
         JButton zoomToggle = new JButton("Toggle drawing mode");
         zoomToggle.addActionListener(e -> {
-            isReadOnlyMode=!isReadOnlyMode;
+            isReadOnlyMode = !isReadOnlyMode;
             chartPanel.setMouseZoomable(isReadOnlyMode);
         });
         topPanel.add(zoomToggle);
@@ -176,16 +176,16 @@ public class FunctionFitterToBezierCurve extends JFrame {
                         e.getY(), dataArea, plot.getRangeAxisEdge());
 
 
-                List<XYDataItem> controlItems = controlDataSeries.getItems().stream().map(i->(XYDataItem)i).toList();
-                var allControlPoints = controlItems.stream().map((XYDataItem i)->new Point2D.Double(i.getX().doubleValue(),i.getY().doubleValue())).toList();
+                List<XYDataItem> controlItems = controlDataSeries.getItems().stream().map(i -> (XYDataItem) i).toList();
+                var allControlPoints = controlItems.stream().map((XYDataItem i) -> new Point2D.Double(i.getX().doubleValue(), i.getY().doubleValue())).toList();
 
                 controlDataSeries.clear();
-                int i=0;
+                int i = 0;
                 for (var controlPoint : allControlPoints) {
-                    if (i==selectedBezierPointIndex) {
-                        controlDataSeries.add(x,y);
+                    if (i == selectedBezierPointIndex) {
+                        controlDataSeries.add(x, y);
                     } else {
-                        controlDataSeries.add(controlPoint.x,controlPoint.y);
+                        controlDataSeries.add(controlPoint.x, controlPoint.y);
                     }
                     i++;
                 }
@@ -198,7 +198,7 @@ public class FunctionFitterToBezierCurve extends JFrame {
         chartPanel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseReleased(MouseEvent e) {
-                selectedBezierPointIndex=-1;
+                selectedBezierPointIndex = -1;
             }
         });
 
@@ -220,17 +220,17 @@ public class FunctionFitterToBezierCurve extends JFrame {
                         e.getY(), dataArea, plot.getRangeAxisEdge());
 
                 double bestDistance = Integer.MAX_VALUE; // depends on axis scale
-                List<XYDataItem> controlItems = controlDataSeries.getItems().stream().map(i->(XYDataItem)i).toList();
-                var controlPoints = controlItems.stream().map((XYDataItem i)->new Point2D.Double(i.getX().doubleValue(),i.getY().doubleValue())).toList();
+                List<XYDataItem> controlItems = controlDataSeries.getItems().stream().map(i -> (XYDataItem) i).toList();
+                var controlPoints = controlItems.stream().map((XYDataItem i) -> new Point2D.Double(i.getX().doubleValue(), i.getY().doubleValue())).toList();
 
-                int i=0;
+                int i = 0;
                 for (Point2D.Double p : controlPoints) {
                     double dx = p.x - x;
                     double dy = p.y - y;
 
-                    double curr = Math.sqrt(dx*dx + dy*dy);
+                    double curr = Math.sqrt(dx * dx + dy * dy);
                     if (curr < bestDistance) {
-                        bestDistance=curr;
+                        bestDistance = curr;
                         selectedBezierPointIndex = i;
                     }
                     i++;
@@ -245,14 +245,22 @@ public class FunctionFitterToBezierCurve extends JFrame {
         Point2D.Double p0 = new Point2D.Double(0, 0);
         Point2D.Double p1 = new Point2D.Double(2, 5);
         Point2D.Double p2 = new Point2D.Double(5, 5);
-        Point2D.Double p3 = new Point2D.Double(7, 0);
 
-        control = new XYSeries("Control points (for single B-curve)",false);
+        Point2D.Double p3 = new Point2D.Double(8, 0);
+
+        Point2D.Double p4 = new Point2D.Double(11, -5);
+        Point2D.Double p5 = new Point2D.Double(12, 10);
+        Point2D.Double p6 = new Point2D.Double(16, 5);
+
+        control = new XYSeries("Control points", false);
         control.add(p0.x, p0.y);
         control.add(p1.x, p1.y);
         control.add(p2.x, p2.y);
         control.add(p3.x, p3.y);
-        this.controlDataSeries =control;
+        control.add(p4.x, p4.y);
+        control.add(p5.x, p5.y);
+        control.add(p6.x, p6.y);
+        this.controlDataSeries = control;
 
         XYSeriesCollection datasetControl = new XYSeriesCollection(controlDataSeries);
         XYLineAndShapeRenderer renderer2 = new XYLineAndShapeRenderer(true, true);
@@ -273,59 +281,59 @@ public class FunctionFitterToBezierCurve extends JFrame {
         calculateDelayed();
     }
 
+    public record BestResult(List<Double> intersectionTimes, List<SegmentSampleData> segments,
+                             List<PolynomialFunction> polynomials, double score) {
+
+    }
+
     private void calculate() {
         updateSampleSeriesFromControlPoints();
         System.out.println(String.format("calculating best polyfit of degree %d using %d segments", degreeTofit, totalSegmentCountToFit));
         double globalStartTime = sampleSeries.getMinX();
         double globalEndTime = sampleSeries.getMaxX();
-        List<PolynomialFunction> bestFitResult=List.of();
-        List<SegmentSampleData> bestSegments=List.of();
-        double bestFitScore = 1000000.0;
-        List<Double> intersectionTimes = new ArrayList<>();
-        List<Double> bestIntersectionTimes = new ArrayList<>();
 
-        //get a sensible starting point for intersectionTimes by random cuts
-        for (int k = 0; k< segmentIntervalSearchSpaceSize; k++){
+        BestResult bestResult = new BestResult(List.of(), List.of(), List.of(), 1000000.0);
+        bestResult = getBestSegmentationFromRandomCuts(globalStartTime, globalEndTime, bestResult);
+        bestResult = optimizeBestResultWithSmallPertubations(bestResult);
 
-            intersectionTimes = generateRandomIntersectionTimes(globalStartTime,globalEndTime, totalSegmentCountToFit);
+        List<Color> colors = List.of(Color.MAGENTA, Color.ORANGE, Color.RED, Color.BLUE, Color.GREEN, Color.WHITE, Color.DARK_GRAY, Color.CYAN, Color.PINK, Color.YELLOW);
 
-            List<SegmentSampleData> segments = new ArrayList<>();
-            for (int i = 0; i< totalSegmentCountToFit; i++) {
-                var p = getPartition(intersectionTimes.get(i),intersectionTimes.get(i+1),sampleSeries);
-                SegmentSampleData segment = getSegmentSampleData(p);
-                segments.add(segment);
-            }
-            PolyfitDto dto = new PolyfitDto(segments, degreeTofit);
-            CustomPolyFitter customPolyFitter = new CustomPolyFitter(dto);
-            List<List<Double>> coeffs = customPolyFitter.calculateOptimalCoeffs();
-
-            List<PolynomialFunction> result = new ArrayList<>();
-            for (int i = 0; i< totalSegmentCountToFit; i++) {
-                PolynomialFunction polynomial = new PolynomialFunction(coeffs.get(i).stream().mapToDouble(Double::doubleValue).toArray());
-                result.add(polynomial);
-            }
-            if (CustomPolyFitter.lastRes <bestFitScore) {
-                bestFitScore=CustomPolyFitter.lastRes;
-                System.out.println(String.format("New best segmentation at: %s , fit-value= %f, after %d tries", intersectionTimes,bestFitScore,k));
-                bestSegments=segments;
-                bestFitResult=result;
-                bestIntersectionTimes=intersectionTimes;
-            }
+        for (int i = 0; i < totalSegmentCountToFit; i++) {
+            plotPolynomial(bestResult.segments().get(0).samples().stream().mapToDouble(s -> s.getX()).toArray(), bestResult.polynomials().get(i), plot, 2 + i, "p" + String.valueOf(i) + " : " + bestResult.polynomials().get(i).toString().replaceAll("([.][0-9]{3})[0-9]*", "$1 "), colors.get(i), bestResult.segments().get(i).startTime(), bestResult.segments().get(i).endTime());
         }
 
-        intersectionTimes = bestIntersectionTimes;
+        double startY = 0;
+        double endY = 0;
+        double startDY_DX = 0;
+        double endDY_DX = 0;
+        for (int j = 0; j < bestResult.polynomials().size(); j++) {
+            startY = bestResult.polynomials().get(j).value(bestResult.intersectionTimes().get(j));
+            startDY_DX = bestResult.polynomials().get(j).polynomialDerivative().value(bestResult.intersectionTimes().get(j));
+            if (j > 0) {
+                System.out.println(String.format("For Segment %d: y diff = %f, y' diff = %f", j, endY - startY, endDY_DX - startDY_DX));
+            }
+            endY = bestResult.polynomials().get(j).value(bestResult.intersectionTimes().get(j + 1));
+            endDY_DX = bestResult.polynomials().get(j).polynomialDerivative().value(bestResult.intersectionTimes().get(j + 1));
+            //System.out.println(String.format("%f %f %f %f",startY,startDY_DX,endY,endDY_DX));
 
-        boolean goLeft=true;
-        for (int j=1; j<intersectionTimes.size()-1; j++) {
+        }
+
+        chart.setTitle(String.format("Showing best segmentation and best polynomial-fit to drawn Bezier-curve. \nUsing degree=%d and segmentCount=%d. Fit-score=%f", degreeTofit, totalSegmentCountToFit, bestResult.score()));
+    }
+
+    private BestResult optimizeBestResultWithSmallPertubations(BestResult bestResult) {
+        List<Double> intersectionTimes = bestResult.intersectionTimes();
+        boolean goLeft = true;
+        for (int j = 1; j < intersectionTimes.size() - 1; j++) {
             for (int k = 0; k < 1000; k++) {
                 var old = intersectionTimes.get(j);
-                double step=0.01;
+                double step = 0.01;
                 if (goLeft) {
-                    if (intersectionTimes.get(j-1) < (old-step)) {
+                    if (intersectionTimes.get(j - 1) < (old - step)) {
                         intersectionTimes.set(j, old - step);
                     }
                 } else {
-                    if (intersectionTimes.get(j+1) > (old+step)) {
+                    if (intersectionTimes.get(j + 1) > (old + step)) {
                         intersectionTimes.set(j, old + step);
                     }
                 }
@@ -345,13 +353,11 @@ public class FunctionFitterToBezierCurve extends JFrame {
                     result.add(polynomial);
                 }
                 //System.out.println("Trying:"+intersectionTimes + ":"+CustomPolyFitter.lastRes);
-                if (CustomPolyFitter.lastRes < bestFitScore) {
-                    bestFitScore = CustomPolyFitter.lastRes;
-                    System.out.println(String.format("New best resegmentation at: %s , fit-value= %f, after %d tries", intersectionTimes, bestFitScore, k));
-                    bestSegments = segments;
-                    bestFitResult = result;
+                if (CustomPolyFitter.lastRes < bestResult.score()) {
+                    bestResult = new BestResult(intersectionTimes, segments, result, CustomPolyFitter.lastRes);
+                    System.out.println(String.format("New best resegmentation at: %s , fit-value= %f, after %d tries", intersectionTimes, bestResult.score(), k));
                 } else {
-                    if (k>2) {
+                    if (k > 2) {
                         break;
                     }
                     intersectionTimes.set(j, old);
@@ -360,14 +366,37 @@ public class FunctionFitterToBezierCurve extends JFrame {
 
             }
         }
+        return bestResult;
+    }
 
-            List<Color> colors = List.of(Color.MAGENTA, Color.ORANGE, Color.RED, Color.BLUE, Color.GREEN, Color.WHITE, Color.DARK_GRAY, Color.CYAN, Color.PINK, Color.YELLOW);
+    private BestResult getBestSegmentationFromRandomCuts(double globalStartTime, double globalEndTime, BestResult bestResult) {
+        List<Double> intersectionTimes;
+        //get a sensible starting point for intersectionTimes by random cuts
+        for (int k = 0; k < segmentIntervalSearchSpaceSize; k++) {
 
-        for (int i = 0; i< totalSegmentCountToFit; i++) {
-            plotPolynomial(bestSegments.get(0).samples().stream().mapToDouble(s->s.getX()).toArray(), bestFitResult.get(i), plot, 2+i, "p"+String.valueOf(i)+ " : " +  bestFitResult.get(i).toString().replaceAll("([.][0-9]{3})[0-9]*","$1 "), colors.get(i), bestSegments.get(i).startTime(), bestSegments.get(i).endTime());
+            intersectionTimes = generateRandomIntersectionTimes(globalStartTime, globalEndTime, totalSegmentCountToFit);
+
+            List<SegmentSampleData> segments = new ArrayList<>();
+            for (int i = 0; i < totalSegmentCountToFit; i++) {
+                var p = getPartition(intersectionTimes.get(i), intersectionTimes.get(i + 1), sampleSeries);
+                SegmentSampleData segment = getSegmentSampleData(p);
+                segments.add(segment);
+            }
+            PolyfitDto dto = new PolyfitDto(segments, degreeTofit);
+            CustomPolyFitter customPolyFitter = new CustomPolyFitter(dto);
+            List<List<Double>> coeffs = customPolyFitter.calculateOptimalCoeffs();
+
+            List<PolynomialFunction> result = new ArrayList<>();
+            for (int i = 0; i < totalSegmentCountToFit; i++) {
+                PolynomialFunction polynomial = new PolynomialFunction(coeffs.get(i).stream().mapToDouble(Double::doubleValue).toArray());
+                result.add(polynomial);
+            }
+            if (CustomPolyFitter.lastRes < bestResult.score()) {
+                bestResult = new BestResult(intersectionTimes, segments, result, CustomPolyFitter.lastRes);
+                System.out.println(String.format("New best segmentation at: %s , fit-value= %f, after %d tries", intersectionTimes, bestResult.score(), k));
+            }
         }
-
-        chart.setTitle(String.format("Showing best segmentation and best polynomial-fit to drawn Bezier-curve. \nUsing degree=%d and segmentCount=%d. Fit-score=%f", degreeTofit, totalSegmentCountToFit,bestFitScore));
+        return bestResult;
     }
 
     private void calculateDelayed() {
@@ -381,11 +410,11 @@ public class FunctionFitterToBezierCurve extends JFrame {
     }
 
     private void recalculatePlot() {
-        this.derivativeContinuityWeight=Integer.parseInt(derivContinuityInput.getText());
-        this.continuityWeight=Integer.parseInt(continuityInput.getText());
-        this.degreeTofit=Integer.parseInt(degreeInput.getText());
-        this.segmentIntervalSearchSpaceSize=Integer.parseInt(searchDepthInput.getText());
-        this.totalSegmentCountToFit=Integer.parseInt(segmentCountInput.getText());
+        this.derivativeContinuityWeight = Integer.parseInt(derivContinuityInput.getText());
+        this.continuityWeight = Integer.parseInt(continuityInput.getText());
+        this.degreeTofit = Integer.parseInt(degreeInput.getText());
+        this.segmentIntervalSearchSpaceSize = Integer.parseInt(searchDepthInput.getText());
+        this.totalSegmentCountToFit = Integer.parseInt(segmentCountInput.getText());
         for (int i = plot.getDatasetCount() - 1; i >= 1; i--) {
             if (i != CONTROL_DATA_SET_INDEX) {
                 plot.setDataset(i, null);
@@ -405,11 +434,11 @@ public class FunctionFitterToBezierCurve extends JFrame {
     }
 
     private PartitionedSample getPartition(double startTime, double endTime, XYSeries allSamples) {
-        List<XYDataItem> items = sampleSeries.getItems().stream().map(i->(XYDataItem)i).toList();
+        List<XYDataItem> items = sampleSeries.getItems().stream().map(i -> (XYDataItem) i).toList();
 
-        return new PartitionedSample(startTime,endTime,items.stream()
-                .filter((XYDataItem i)->i.getX().doubleValue()>= startTime && i.getX().doubleValue()< endTime)
-                .map((XYDataItem i)->new Point2D.Double(i.getX().doubleValue(),i.getY().doubleValue()))
+        return new PartitionedSample(startTime, endTime, items.stream()
+                .filter((XYDataItem i) -> i.getX().doubleValue() >= startTime && i.getX().doubleValue() < endTime)
+                .map((XYDataItem i) -> new Point2D.Double(i.getX().doubleValue(), i.getY().doubleValue()))
                 .toList()
         );
     }
@@ -417,14 +446,20 @@ public class FunctionFitterToBezierCurve extends JFrame {
     private void updateSampleSeriesFromControlPoints() {
         sampleSeries.clear();
 
-        List<XYDataItem> controlItems = controlDataSeries.getItems().stream().map(i->(XYDataItem)i).toList();
-        var controlPoints = controlItems.stream().map((XYDataItem i)->new Point2D.Double(i.getX().doubleValue(),i.getY().doubleValue())).toList();
+        List<XYDataItem> controlItems = controlDataSeries.getItems().stream().map(i -> (XYDataItem) i).toList();
+        var controlPoints = controlItems.stream().map((XYDataItem i) -> new Point2D.Double(i.getX().doubleValue(), i.getY().doubleValue())).toList();
 
-        //TODO fix order
-        var p0=controlPoints.get(0);
-        var p1=controlPoints.get(1);
-        var p2=controlPoints.get(2);
-        var p3=controlPoints.get(3);
+        calculateSamplesOnBezierCurve(controlPoints, 0);
+        calculateSamplesOnBezierCurve(controlPoints, 3);
+
+
+    }
+
+    private void calculateSamplesOnBezierCurve(List<Point2D.Double> controlPoints, int startIndex) {
+        var p0 = controlPoints.get(startIndex);
+        var p1 = controlPoints.get(startIndex + 1);
+        var p2 = controlPoints.get(startIndex + 2);
+        var p3 = controlPoints.get(startIndex + 3);
 
         for (int i = 0; i <= 200; i++) {
             double t = i / 200.0;
@@ -436,7 +471,6 @@ public class FunctionFitterToBezierCurve extends JFrame {
                             3 * u * u * t * p1.x +
                             3 * u * t * t * p2.x +
                             t * t * t * p3.x;
-
             double y =
                     u * u * u * p0.y +
                             3 * u * u * t * p1.y +
@@ -447,12 +481,13 @@ public class FunctionFitterToBezierCurve extends JFrame {
         }
     }
 
+
     public static List<Double> generateRandomIntersectionTimes(double min, double max, int n) {
         Random rand = new Random();
         List<Double> cuts = new ArrayList<>();
         cuts.add(min);
         for (int i = 1; i < n; i++) {
-            cuts.add(min + rand.nextDouble() * (max-min));
+            cuts.add(min + rand.nextDouble() * (max - min));
         }
         cuts.add(max);
 

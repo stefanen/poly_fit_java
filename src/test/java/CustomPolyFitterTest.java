@@ -88,7 +88,7 @@ class CustomPolyFitterTest {
     }
 
     /*
-        creates samples from y=kx+m (with weight 1), x in [startX,endX]
+        creates segments from y=kx+m (with weight 1), x in [startX,endX]
      */
     private static List<WeightedObservedPoint> createLinearSamples(double startX, double endX, double k, double m) {
         List<WeightedObservedPoint> samples1 = new ArrayList<>();
