@@ -38,6 +38,7 @@ public class FunctionFitterToBezierCurve extends JFrame {
     //TODO search among integer times
 
     public static final int CONTROL_DATA_SET_INDEX = 10;
+    public static final double SEGMENT_SCALE = 10;
     private JTextField searchDepthInput;
     private JTextField derivContinuityInput;
     private JTextField continuityInput;
@@ -86,7 +87,12 @@ public class FunctionFitterToBezierCurve extends JFrame {
 
         plot = chart.getXYPlot();
         XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(true, false);
+        renderer.setSeriesStroke(0,new BasicStroke(2.0f));
+        renderer.setSeriesPaint(0, Color.BLACK);
+
+
         plot.setRenderer(renderer);
+
         plot.getDomainAxis().setRange(0.0, 10.0);
         plot.getRangeAxis().setRange(-20.0, 20.0);
         chartPanel = new ChartPanel(chart);
@@ -303,7 +309,7 @@ public class FunctionFitterToBezierCurve extends JFrame {
         bestResult = getBestSegmentationFromRandomCuts(globalStartTime, globalEndTime, bestResult);
 
         //TODO optimize later
-        //bestResult = optimizeBestResultWithSmallPertubations(bestResult);
+        bestResult = optimizeBestResultWithSmallPertubations(bestResult);
 
         bestResult = truncateSolution(globalStartTime, globalEndTime, bestResult);
         chart.setTitle(String.format("Showing best segmentation and best polynomial-fit to drawn Bezier-curve. \nUsing degree=%d and segmentCount=%d. \nFit-score before truncation=%f\nAfter truncation to resolution 1/(%d): %f", degreeTofit, totalSegmentCountToFit, bestResult.score(),(int)truncationResolution, truncatedScore));
@@ -360,13 +366,12 @@ public class FunctionFitterToBezierCurve extends JFrame {
 
     private BestResult optimizeBestResultWithSmallPertubations(BestResult bestResult) {
         List<Double> intersectionTimes = bestResult.intersectionTimes();
-        //boolean goLeft = true;
-        double scale = 1;
+
         for (int j = 1; j < intersectionTimes.size() - 1; j++) {
-            double stepsLeft = 1/scale;
+            double stepsLeft = 1/ SEGMENT_SCALE;
 
             for (int k = 0; k < 1000; k++) {
-                System.out.println(stepsLeft +"for junction "+j);
+                //System.out.println(stepsLeft +"for junction "+j);
                 var old = intersectionTimes.get(j);
                 if (intersectionTimes.get(j - 1) < (old - stepsLeft)) {
                     intersectionTimes.set(j, old - stepsLeft);
@@ -394,12 +399,12 @@ public class FunctionFitterToBezierCurve extends JFrame {
                 } else {
 
                     intersectionTimes.set(j, old);
-                    if (stepsLeft<100 && stepsLeft>0) {
-                        stepsLeft+=1.0/scale;
-                    } else if (stepsLeft>=100.0) {
-                        stepsLeft=-1.0/scale;
-                    } else if (stepsLeft<0.0 && stepsLeft>-100){
-                        stepsLeft-=1.0/scale;
+                    if (stepsLeft<10.0/ SEGMENT_SCALE && stepsLeft>0) {
+                        stepsLeft+=1.0/ SEGMENT_SCALE;
+                    } else if (stepsLeft>=10.0/ SEGMENT_SCALE) {
+                        stepsLeft=-1.0/ SEGMENT_SCALE;
+                    } else if (stepsLeft<0.0 && stepsLeft>-10.0/ SEGMENT_SCALE){
+                        stepsLeft-=1.0/ SEGMENT_SCALE;
                     } else {
                         break;
                     }
@@ -529,10 +534,16 @@ public class FunctionFitterToBezierCurve extends JFrame {
         List<Double> cuts = new ArrayList<>();
         cuts.add(min);
         for (int i = 1; i < n; i++) {
-            double candidate = Math.floor(min + rand.nextDouble() * (max - min));
+            double candidate = Math.floor(
+                    SEGMENT_SCALE * (min + rand.nextDouble() * (max - min)))
+                    / SEGMENT_SCALE;
+
             while (cuts.contains(candidate)) {
-                candidate = Math.floor(min + rand.nextDouble() * (max - min));
+                candidate = Math.floor(
+                        SEGMENT_SCALE * (min + rand.nextDouble() * (max - min)))
+                        / SEGMENT_SCALE;
             }
+
             cuts.add(candidate);
         }
         cuts.add(max);
@@ -563,7 +574,8 @@ public class FunctionFitterToBezierCurve extends JFrame {
             xValues.add(i);
             yValues.add(polynomial.value(i));
         }
-        XYLineAndShapeRenderer renderer2 = new XYLineAndShapeRenderer(true, true);
+        XYLineAndShapeRenderer renderer2 = new XYLineAndShapeRenderer(true, false);
+        renderer2.setSeriesStroke(0,new BasicStroke(4.0f));
         renderer2.setSeriesPaint(0, color);
         plot.setDataset(id, new XYSeriesCollection(series2));
         plot.setRenderer(id, renderer2);
