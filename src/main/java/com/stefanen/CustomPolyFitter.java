@@ -99,6 +99,14 @@ public class CustomPolyFitter {
                 .toList();
     }
 
+    public double getScore(double[] otherSolution) {
+        RealVector otherCoeffs = new ArrayRealVector(otherSolution, false);
+        RealVector residuals = A.operate(otherCoeffs).subtract(b);
+
+        double myRms = residuals.getNorm() / Math.sqrt(b.getDimension());
+        return myRms;
+    }
+
     private double[] setupWeights() {
         double[] weights = new double[m];
         int i = 0;
